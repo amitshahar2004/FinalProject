@@ -5,10 +5,10 @@ import sqlite3
 import pickle
 import time
 import tkinter as tk
+import hashlib
 
 server_is_selected = False
 server_is_connected = False
-
 
 # width = 640
 # height = 480
@@ -73,7 +73,7 @@ class TreatUser:
             exit()
 
     def LoginForm(self):
-        global LoginFrame, lbl_result1 , liste, password , btn_login , username, lbl_register
+        global LoginFrame, lbl_result1 , liste, password , btn_login , username, lbl_register, lbl_unregister
         LoginFrame = Frame(self.root)
         LoginFrame.pack(side=TOP, pady=80)
         lbl_username = Label(LoginFrame, text="Username:", font=('arial', 25), bd=18)
@@ -115,16 +115,35 @@ class TreatUser:
         lbl_register.bind('<Button-1>', self.ToggleToRegister)
         lbl_register['state'] = 'disabled'
 
-    def enable_frame(self):
+        lbl_unregister = Label(LoginFrame, text="UnRegister", fg="Blue", font=('arial', 12))
+        lbl_unregister.grid(row=1, sticky=W)
+        lbl_unregister.bind('<Button-1>', self.ToggleToUnRegister)
+        lbl_unregister['state'] = 'disabled'
+
+    def enable_login_frame(self):
         username['state'] = 'normal'
         password['state'] = 'normal'
         btn_login['state'] = 'normal'
         lbl_register['state'] = 'normal'
+        lbl_unregister['state'] = 'normal'
         liste['state'] = 'disable'
 
+    def disable_register_frame(self):
+        username['state']  = 'disabled'
+        password['state']  = 'disabled'
+        firstname['state'] = 'disabled'
+        lastname['state']  = 'disabled'
+        btn_register['state'] = 'disabled'
+
+
+    def disable_unregister_frame(self):
+        unreg_username['state']  = 'disabled'
+        unreg_password['state']  = 'disabled'
+        btn_unregister['state'] = 'disabled'
 
     def RegisterForm(self):
-        global RegisterFrame, lbl_result2
+        global RegisterFrame, lbl_result2,username,password,firstname,lastname,btn_register
+
         RegisterFrame = Frame(self.root)
         RegisterFrame.pack(side=TOP, pady=40)
         lbl_username = Label(RegisterFrame, text="Username:", font=('arial', 18), bd=18)
@@ -149,26 +168,57 @@ class TreatUser:
         btn_register.grid(row=6, columnspan=2, pady=20)
         lbl_login = Label(RegisterFrame, text="Login", fg="Blue", font=('arial', 12))
         lbl_login.grid(row=0, sticky=W)
-        lbl_login.bind('<Button-1>', self.ToggleToLogin)
+        lbl_login.bind('<Button-1>', self.RegisterToggleToLogin)
 
+    def UnRegisterForm(self):
+        global UnRegisterFrame, unreg_lbl_result,unreg_username,unreg_password,btn_unregister
 
-    def ToggleToLogin(self, event=None):
+        UnRegisterFrame = Frame(self.root)
+        UnRegisterFrame.pack(side=TOP, pady=40)
+        lbl_username = Label(UnRegisterFrame, text="Username:", font=('arial', 18), bd=18)
+        lbl_username.grid(row=1)
+        lbl_password = Label(UnRegisterFrame, text="Password:", font=('arial', 18), bd=18)
+        lbl_password.grid(row=2)
+        unreg_lbl_result = Label(UnRegisterFrame, text="", font=('arial', 18))
+        unreg_lbl_result.grid(row=5, columnspan=2)
+        unreg_username = Entry(UnRegisterFrame, font=('arial', 20), textvariable=self.USERNAME, width=15)
+        unreg_username.grid(row=1, column=1)
+        unreg_password = Entry(UnRegisterFrame, font=('arial', 20), textvariable=self.PASSWORD, width=15, show="*")
+        unreg_password.grid(row=2, column=1)
+        btn_unregister = Button(UnRegisterFrame, text="Un-Register", font=('arial', 18), width=35, command=self.UnRegister)
+        btn_unregister.grid(row=6, columnspan=2, pady=20)
+        lbl_login = Label(UnRegisterFrame, text="Login", fg="Blue", font=('arial', 12))
+        lbl_login.grid(row=0, sticky=W)
+        lbl_login.bind('<Button-1>', self.UnRegisterToggleToLogin)
+
+    def RegisterToggleToLogin(self, event=None):
         RegisterFrame.destroy()
+
         self.LoginForm()
         if server_is_connected == True:
-            self.enable_frame()
+            self.enable_login_frame()
+
+    def UnRegisterToggleToLogin(self, event=None):
+        UnRegisterFrame.destroy()
+
+        self.LoginForm()
+        if server_is_connected == True:
+            self.enable_login_frame()
 
 
     def ToggleToRegister(self, event=None):
         LoginFrame.destroy()
         self.RegisterForm()
 
+    def ToggleToUnRegister(self, event=None):
+        LoginFrame.destroy()
+        self.UnRegisterForm()
+
     def validate_server(self, event):
         self.server_selected(lbl_result1)
 
     def Register(self):
-
-        data_register = pickle.dumps(["Register", self.USERNAME.get(), self.PASSWORD.get(), self.FIRSTNAME.get(), self.LASTNAME.get()])
+        hexdigest_password_result = ""
 
         if not self.USERNAME.get() or not self.PASSWORD.get() or not self.FIRSTNAME.get() or not self.LASTNAME.get():
             text = "one of the field is empty"
@@ -180,6 +230,14 @@ class TreatUser:
         if server_is_connected == False:
             print("no server is not connected")
             return
+
+        encoded = self.PASSWORD.get().encode("utf8")
+        result = hashlib.md5(encoded)
+        hexdigest_password_result = result.hexdigest()
+
+        print ("hexdigest_password_result" + hexdigest_password_result + " self.PASSWORD.get()="+self.PASSWORD.get())
+        #data_register = pickle.dumps(["Register", self.USERNAME.get(), self.PASSWORD.get(), self.FIRSTNAME.get(), self.LASTNAME.get()])
+        data_register = pickle.dumps(["Register", self.USERNAME.get(), hexdigest_password_result, self.FIRSTNAME.get(), self.LASTNAME.get()])
 
         self.my_socket.send(data_register)
 
@@ -195,7 +253,42 @@ class TreatUser:
             self.PASSWORD.set("")
             self.FIRSTNAME.set("")
             self.LASTNAME.set("")
+            self.disable_register_frame()
 
+    def UnRegister(self):
+        hexdigest_password_result = ""
+
+        if not self.USERNAME.get() or not self.PASSWORD.get() :
+            text = "one of the field is empty"
+            lbl_result2.config(text=text)
+            print("user and password can't be empty")
+            return
+
+        self.server_selected(unreg_lbl_result)
+        if server_is_connected == False:
+            print("no server is not connected")
+            return
+
+        encoded = self.PASSWORD.get().encode("utf8")
+        result = hashlib.md5(encoded)
+        hexdigest_password_result = result.hexdigest()
+
+        print ("hexdigest_password_result" + hexdigest_password_result + " self.PASSWORD.get()="+self.PASSWORD.get())
+        data_register = pickle.dumps(["UnRegister", self.USERNAME.get(), hexdigest_password_result])
+
+        self.my_socket.send(data_register)
+
+        bytes_message_register = self.my_socket.recv(1024)
+        message_register = pickle.loads(bytes_message_register)
+
+        text = message_register[0]
+        color = message_register[1]
+        unreg_lbl_result.config(text=text, fg=color)
+
+        if text == "Successfully Deleted!":
+            self.USERNAME.set("")
+            self.PASSWORD.set("")
+            self.disable_unregister_frame()
 
     def server_selected(self, lbl_result):
         global server_is_selected
@@ -225,7 +318,7 @@ class TreatUser:
             return
 
         server_is_connected = True
-        self.enable_frame()
+        self.enable_login_frame()
         text = "connection to servre succeed"
         print("connection to servre succeed")
         lbl_result.config(text=text)
@@ -233,6 +326,7 @@ class TreatUser:
     def Login(self):
         global server_is_selected
         global server_is_connected
+        hexdigest_password_result = ""
 
         if not self.USERNAME.get() or not self.PASSWORD.get():
             text = "user and password can't be empty"
@@ -246,7 +340,12 @@ class TreatUser:
             return
 
         liste['state'] = 'disabled'
-        data_login = pickle.dumps(["Login", self.USERNAME.get(), self.PASSWORD.get()])
+
+        encoded = self.PASSWORD.get().encode("utf8")
+        result = hashlib.md5(encoded)
+        hexdigest_password_result = result.hexdigest()
+
+        data_login = pickle.dumps(["Login", self.USERNAME.get(), hexdigest_password_result])
         self.my_socket.send(data_login)
 
         bytes_message_login = self.my_socket.recv(1024)
