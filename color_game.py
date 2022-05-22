@@ -8,12 +8,12 @@ colours = ['Red','Blue','Green','Pink','Black',
 score = 0
 
 # the game time left, initially 30 seconds.
-timeleft = 30
+timeleft = 15
 
 # function that will start the game.
 def startGame(event):
 
-    if timeleft == 30:
+    if timeleft == 15:
 
         # start the countdown timer.
         countdown()
@@ -66,6 +66,8 @@ def countdown():
 
         # decrement the timer.
         timeleft -= 1
+        if timeleft == 0:
+            print("score: " + str(score))
 
         # update the time left label
         timeLabel.config(text = "Time left: "
@@ -87,7 +89,7 @@ root.title("COLORGAME")
 root.geometry("375x200")
 
 # add an instructions label
-instructions = tkinter.Label(root, text = "Type in the colour"
+instructions = tkinter.Label(root, text = "Type in the colour "
                         "of the words, and not the word text!",
                                       font = ('Helvetica', 12))
 instructions.pack()

@@ -1,6 +1,7 @@
 import pygame
 import time
 import random
+import tkinter as tk
 
 pygame.init()
 
@@ -15,7 +16,7 @@ dis_width = 600
 dis_height = 400
 
 dis = pygame.display.set_mode((dis_width, dis_height))
-pygame.display.set_caption('Snake Game by Edureka')
+pygame.display.set_caption('Snake Game')
 
 clock = pygame.time.Clock()
 
@@ -70,12 +71,15 @@ def gameLoop():
                     if event.key == pygame.K_q:
                         game_over = True
                         game_close = False
+                        #print("score: 10")
+                        print("score: " + str(Length_of_snake - 1))
                     if event.key == pygame.K_c:
                         gameLoop()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
+                print("score: 10")
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     x1_change = -snake_block

@@ -299,6 +299,7 @@ class TreatUser:
 
         try:
             for select_server in liste.curselection():
+                print("select_server=" + str(select_server))
                 if select_server == 0:
                     server_is_selected = True;
                     self.server1()
@@ -306,8 +307,9 @@ class TreatUser:
                     server_is_selected = True;
                     self.server2()
         except:
-            text = "unable to connect server (choose diffrent server)"
-            print("unable to connect server (choose diffrent server)")
+            text = "unable to connect server (choose different server)"
+            print("unable to connect server (choose different server)")
+            self.SERVER_ID = 0
             lbl_result.config(text=text)
             return
 
@@ -319,8 +321,8 @@ class TreatUser:
 
         server_is_connected = True
         self.enable_login_frame()
-        text = "connection to servre succeed"
-        print("connection to servre succeed")
+        text = "connection to server succeed"
+        print("connection to server succeed")
         lbl_result.config(text=text)
 
     def Login(self):
@@ -364,12 +366,12 @@ class TreatUser:
             return
 
         if self.SERVER_ID == 2:
-            print("server-1 choosen first close close server-2")
-#            self.my_socket.close()
+            print("server-1 chosen first close close server-2")
+            self.my_socket.close()
 
         self.SERVER_ID = 1
 
-        print("server-1 choosen" + " SERVER_IP=" + self.SERVER_IP_1 + " SERVER_PORT=" + str(self.SERVER_PORT_1))
+        print("server-1 chosen" + " SERVER_IP=" + self.SERVER_IP_1 + " SERVER_PORT=" + str(self.SERVER_PORT_1))
         self.my_socket.connect((self.SERVER_IP_1, self.SERVER_PORT_1))
 
     def server2(self):
@@ -378,11 +380,12 @@ class TreatUser:
             return
 
         if self.SERVER_ID == 1:
-            print("server-2 choosen first close close server-1")
+            print("server-2 chosen first close close server-1")
             self.my_socket.close()
 
         self.SERVER_ID = 2
 
+        print("server-2 chosen" + " SERVER_IP=" + self.SERVER_IP_2 + " SERVER_PORT=" + str(self.SERVER_PORT_2))
         self.my_socket.connect((self.SERVER_IP_2, self.SERVER_PORT_2))
 
     def read_file_data(self):

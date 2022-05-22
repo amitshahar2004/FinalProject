@@ -11,6 +11,200 @@ import threading
 import connect_user
 
 
+
+
+def user_want_send_everyone_message(pos_x, pos_y, player, treat_messages):
+        # אם המשתמש לחץ על המלבן הלבן האומר שהוא רוצה לשלוח הודעה
+        if (pos_x >= 571 and pos_x <= 808) and (pos_y >= 655 and pos_y <= 694):
+            root = Tk()
+            gui = chat.GUI(root, player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages)
+            root.mainloop()
+
+            return True
+
+        return False
+
+def user_clicked_on_box_to_play(pos_x, pos_y, zira, player):
+        # אם המשתמש לחץ על התיבה זה אומר שהוא רוצה לשחק עם מישהו ולכן כל מי שלוחץ על התיבה צריך להיות באותו מקום ממנה
+        if (pos_x >= zira.get_BOX_POINT_X() and pos_x <= 306) and (pos_y >= zira.get_BOX_POINT_Y() and pos_y <= 566):
+
+            player.set_clicked_on_box()
+
+            player.move_player(pos_x - 100, pos_y - 100)
+
+            return True
+
+        return False
+
+def user_want_to_see_control_board(pos_x, pos_y, player, zira, my_socket):
+        # אם המשתמש לחץ על המלבן הלבן האומר שהוא רוצה לראות את לוח הבקרה של המשחק
+        if (pos_x >= 108 and pos_x <= 491) and (pos_y >= 69 and pos_y <= 102):
+
+            if zira.get_clicked_for_showing_control_board() == False:
+
+                message = pickle.dumps(["controlBoard", zira.get_background_picture()])
+                my_socket.send(message)
+
+            else:
+
+                player.move_player(pos_x - 100, pos_y - 100)
+
+            return True
+
+        return False
+
+def user_want_close_control_board(pos_x, pos_y, player, zira, my_socket, treat_messages):
+        # אם המשתמש לחץ על האיקס של הלוח בקרה האומר שהוא רוצה לסגור את הלוח
+        if (pos_x >= 115 and pos_x <= 162) and (pos_y >= 157 and pos_y <= 185):
+
+            if zira.get_clicked_for_showing_control_board() == True:
+
+                zira.set_clicked_for_showing_control_board(False)
+                message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+                my_socket.send(message)
+
+            else:
+
+                player.move_player(pos_x - 100, pos_y - 100)
+
+            return True
+
+        return False
+
+def user_want_to_go_to_pool_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+
+    # אם המשתמש לחץ על הגבול של התמונה של היער זה אומר שהוא רוצה לעבור למקום הבריכה
+    if pos_x >= 1 and pos_x <= WINDOW_WIDTH-1 and pos_y == 0 and zira.get_background_picture() == 'forest':
+
+            player.move_player(pos_x - 100, pos_y - 100)
+            zira.set_clicked_for_showing_control_board(False)
+            zira.set_background_picture("pool")
+            player.set_starting_bear_point_x(100)
+            player.set_starting_bear_point_y(WINDOW_HEIGHT - 200)
+            message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+            my_socket.send(message)
+
+            return True
+
+    return False
+
+
+def user_want_to_go_to_forest_from_pool_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+
+    # אם המשתמש לחץ על הגבול של התמונה של הבריכה זה אומר שהוא רוצה לעבור למקום היער
+    if pos_x >= 1 and pos_x <= WINDOW_WIDTH-1 and pos_y >= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'pool':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("forest")
+        player.set_starting_bear_point_x(500)
+        player.set_starting_bear_point_y(0)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+
+def user_want_to_go_to_slides_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    # אם המשתמש לחץ על הגבול של התמונה של היער זה אומר שהוא רוצה לעבור למקום המגלשות
+    if pos_x == 0 and pos_y >= 1 and pos_y <= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'forest':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("slides")
+        player.set_starting_bear_point_x(WINDOW_WIDTH - 200)
+        player.set_starting_bear_point_y(100)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+def user_want_to_go_to_forest_from_slides_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    # אם המשתמש לחץ על הגבול של התמונה של המגלשות זה אומר שהוא רוצה לעבור למקום היער
+    if pos_x >= WINDOW_WIDTH-1 and pos_y >= 1 and pos_y <= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'slides':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("forest")
+        player.set_starting_bear_point_x(50)
+        player.set_starting_bear_point_y(200)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+
+def user_want_to_go_to_vacation_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    # אם המשתמש לחץ על הגבול של התמונה של היער זה אומר שהוא רוצה לעבור למקום החופשה
+    if pos_x >= WINDOW_WIDTH-1 and pos_y >= 1 and pos_y <= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'forest':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("vacation")
+        player.set_starting_bear_point_x(0)
+        player.set_starting_bear_point_y(100)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+def user_want_to_go_to_forest_from_vacation_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    # אם המשתמש לחץ על הגבול של התמונה של החופשה זה אומר שהוא רוצה לעבור למקום היער
+    if pos_x == 0 and pos_y >= 1 and pos_y <= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'vacation':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("forest")
+        player.set_starting_bear_point_x(WINDOW_WIDTH - 200)
+        player.set_starting_bear_point_y(100)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+def user_want_to_go_to_beach_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    #  אם המשתמש לחץ על הגבול של התמונה של היער זה אומר שהוא רוצה לעבור למקום החוף ים
+    if pos_x >= 1 and pos_x <= WINDOW_WIDTH-1 and pos_y >= WINDOW_HEIGHT-1 and zira.get_background_picture() == 'forest':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("beach")
+        player.set_starting_bear_point_x(500)
+        player.set_starting_bear_point_y(0)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+def user_want_to_go_to_forest_from_beach_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket):
+    # אם המשתמש לחץ על הגבול של התמונה של החוף ים זה אומר שהוא רוצה לעבור למקום היער
+    if pos_x >= 1 and pos_x <= WINDOW_WIDTH-1 and pos_y == 0 and zira.get_background_picture() == 'beach':
+
+        player.move_player(pos_x - 100, pos_y - 100)
+        zira.set_clicked_for_showing_control_board(False)
+        zira.set_background_picture("forest")
+        player.set_starting_bear_point_x(100)
+        player.set_starting_bear_point_y(WINDOW_HEIGHT - 200)
+        message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message(), zira.get_background_picture()])
+        my_socket.send(message)
+
+        return True
+
+    return False
+
+
 class Zira:
 
     def __init__(self, screen):
@@ -25,6 +219,7 @@ class Zira:
         self.screen = screen
         self.clicked_for_showing_control_board = False
         self.info_control_board = []
+        self.background_picture = "forest"
 
     def get_BOX_POINT_X(self):
 
@@ -34,6 +229,10 @@ class Zira:
 
         return self.BOX_POINT_Y
 
+    def get_background_picture(self):
+
+        return self.background_picture
+
     def get_clicked_for_showing_control_board(self):
 
         return self.clicked_for_showing_control_board
@@ -42,23 +241,30 @@ class Zira:
 
         self.clicked_for_showing_control_board = boolean
 
+    def set_background_picture(self, pic):
+
+        self.background_picture = pic
+
     def set_player(self, data_clients):
 
         print(data_clients)
 
         for player in data_clients:
-            player_image = pygame.image.load("pictures_for_game/panda_walking1.png")
-            player_image.set_colorkey(self.BLACK)
-            self.screen.blit(player_image, (player[0], player[1]))
 
-            font_name = pygame.font.SysFont('arial', 20)
-            text_name = font_name.render(player[2], True, self.BLACK)
-            self.screen.blit(text_name, (player[0] + 100, player[1] + 150))
+            if player[4] == self.background_picture:
 
-            pygame.display.flip()
+                player_image = pygame.image.load("pictures_for_game/panda_walking1.png")
+                player_image.set_colorkey(self.BLACK)
+                self.screen.blit(player_image, (player[0], player[1]))
 
-            if player[3] != '':
-                self.draw_rectangle_with_message(player[3], (player[0] + 100, player[1] + 15), 18)
+                font_name = pygame.font.SysFont('arial', 20)
+                text_name = font_name.render(player[2], True, self.BLACK)
+                self.screen.blit(text_name, (player[0] + 100, player[1] + 150))
+
+                pygame.display.flip()
+
+                if player[3] != '':
+                    self.draw_rectangle_with_message(player[3], (player[0] + 100, player[1] + 15), 18)
 
     def draw_rectangle_with_message(self, text, pos, size):
         font = pygame.font.SysFont('arial', size)
@@ -80,8 +286,26 @@ class Zira:
 
     def set_zira(self, data_clients):
 
-        img = pygame.image.load("pictures_for_game/forest1.png")
-        self.screen.blit(img, (0, 0))
+        if self.background_picture == 'forest':
+            img = pygame.image.load("pictures_for_game/forest1.png")
+            self.screen.blit(img, (0, 0))
+
+        elif self.background_picture == 'pool':
+            img = pygame.image.load("pictures_for_game/pool.png")
+            self.screen.blit(img, (0, 0))
+
+        elif self.background_picture == 'vacation':
+            img = pygame.image.load("pictures_for_game/vacation.png")
+            self.screen.blit(img, (0, 0))
+
+        elif self.background_picture == 'slides':
+            img = pygame.image.load("pictures_for_game/slides.png")
+            self.screen.blit(img, (0, 0))
+
+        elif self.background_picture == 'beach':
+            img = pygame.image.load("pictures_for_game/beach.png")
+            self.screen.blit(img, (0, 0))
+
         pygame.display.flip()
 
         self.draw_rectangle_with_message("CLICK FOR SENDING MESSAGE", (self.CLICK_FOR_SENDING_MESSAGE_POINT_X, self.CLICK_FOR_SENDING_MESSAGE_POINT_Y), 25)
@@ -101,6 +325,7 @@ class Zira:
 
 
     def set_info_control_board(self, info_control_board):
+
         self.info_control_board = info_control_board
 
 
@@ -112,16 +337,30 @@ class Zira:
 
         font_name = pygame.font.SysFont('arial', 16)
 
-        text_the_winner_player = font_name.render("The player who has won the most times: " + str(self.info_control_board[1]), True, self.BLACK)
-        self.screen.blit(text_the_winner_player, (168, 119))
+        if self.info_control_board[1] == "eix eigul" or self.info_control_board[1] == "brike breaker":
 
-        text_num_of_times_the_winner_won = font_name.render("The number of times he won: " + str(self.info_control_board[2]), True, self.BLACK)
-        self.screen.blit(text_num_of_times_the_winner_won, (168, 169))
+            text_the_winner_player = font_name.render("The player who has won the most times: " + str(self.info_control_board[2]), True, self.BLACK)
+            self.screen.blit(text_the_winner_player, (168, 119))
 
-        text_num_of_players_are_playing_eix_eigul = font_name.render("The number of players are playing Eix Eigul: " + str(self.info_control_board[3]), True, self.BLACK)
-        self.screen.blit(text_num_of_players_are_playing_eix_eigul, (168, 219))
+            text_num_of_times_the_winner_won = font_name.render("The number of times he won: " + str(self.info_control_board[3]), True, self.BLACK)
+            self.screen.blit(text_num_of_times_the_winner_won, (168, 169))
 
-        pygame.display.flip()
+            text_num_of_players_are_playing_in_this_game = font_name.render("The number of players are playing in game " + str(self.info_control_board[1])+": " + str(self.info_control_board[4]), True, self.BLACK)
+            self.screen.blit(text_num_of_players_are_playing_in_this_game, (168, 219))
+
+            pygame.display.flip()
+
+        else:
+            text_the_winner_player = font_name.render("The player who has the highest score: " + str(self.info_control_board[2]), True, self.BLACK)
+            self.screen.blit(text_the_winner_player, (168, 119))
+
+            text_num_of_times_the_winner_won = font_name.render("His score: " + str(self.info_control_board[3]), True, self.BLACK)
+            self.screen.blit(text_num_of_times_the_winner_won, (168, 169))
+
+            text_num_of_players_are_playing_in_this_game = font_name.render("The number of players are playing in game " + str(self.info_control_board[1]) + ": " + str(self.info_control_board[4]), True, self.BLACK)
+            self.screen.blit(text_num_of_players_are_playing_in_this_game, (168, 219))
+
+            pygame.display.flip()
 
 
 class Player:
@@ -133,6 +372,14 @@ class Player:
         self.name_player = name_player
         self.clicked_on_box = False
         self.treat_messages = ''
+
+    def set_starting_bear_point_x(self, starting_bear_point_x):
+
+        self.starting_bear_point_x = starting_bear_point_x
+
+    def set_starting_bear_point_y(self, starting_bear_point_y):
+
+        self.starting_bear_point_y = starting_bear_point_y
 
     def get_starting_bear_point_x(self):
 
@@ -176,34 +423,103 @@ class Player:
 
         if self.clicked_on_box == True:
             self.clicked_on_box = False
-            self.play_eix_eigul()
+            if self.treat_messages.get_zira().get_background_picture() == 'forest':
+                self.play_game("eix eigul")
+            elif self.treat_messages.get_zira().get_background_picture() == 'pool':
+                self.play_game("brike breaker")
+            elif self.treat_messages.get_zira().get_background_picture() == 'slides':
+                self.play_game("snake")
+            else:
+                self.play_game("color")
 
-    def play_eix_eigul(self):
+
+    def play_game(self, game):
 
         try:
             my_socket = self.treat_messages.get_my_socket()
-            message = pickle.dumps(["StatusEixEigulGame", self.name_player])
+
+            if game == "eix eigul":
+                message = pickle.dumps(["StatusEixEigulGame", self.name_player])
+            elif game == "brike breaker":
+                message = pickle.dumps(["StatusBrikeBreakerGame", self.name_player])
+            elif game == "snake":
+                message = pickle.dumps(["StatusSnakeGame", self.name_player])
+            else:
+                message = pickle.dumps(["StatusColorGame", self.name_player])
+
             my_socket.send(message)
 
             which_player_file = ''
             data_client = []
 
-            while which_player_file != "you are waiting or playing" and which_player_file != "player_x.py" and which_player_file != "player_o.py":
+            while which_player_file != "you are waiting or playing" and which_player_file != "player_x.py" and which_player_file != "player_o.py" and which_player_file != "brike_breaker_game.py" and which_player_file != "color_game.py" and which_player_file != "snake_game.py":
                 data_client = self.treat_messages.get_data_clients()
                 which_player_file = data_client[0]
 
             if which_player_file == "you are waiting or playing":
                 return
 
-            port_eix_eigul = data_client[1]
-            if which_player_file == "player_x.py":
-                pid_server = subprocess.Popen([sys.executable, "server_eix_eigul.py", str(port_eix_eigul)])
+            if game == "eix eigul":
+                port_to_game = data_client[1]
+                if which_player_file == "player_x.py":
+                    pid_server = subprocess.Popen([sys.executable, "server_eix_eigul.py", str(port_to_game)])
 
-            x = threading.Thread(target=self.thread_eix_eigul, args=(which_player_file, my_socket, port_eix_eigul))
-            x.start()
+                x = threading.Thread(target=self.thread_eix_eigul, args=(which_player_file, my_socket, port_to_game))
+                x.start()
+
+            else:
+                x = threading.Thread(target=self.thread_game_that_not_eix_eigul, args=(which_player_file, my_socket, game))
+                x.start()
 
         except:
             print("the client close the game!")
+
+
+    def thread_game_that_not_eix_eigul(self, which_player_file, my_socket, game):
+
+        try:
+            pid_game_that_not_eix_eigul = subprocess.Popen([sys.executable, which_player_file], stdout=subprocess.PIPE)
+
+            data_in_game = ''
+            won_in_brike_breaker_game = False
+            score = 0
+
+            while True:
+                if pid_game_that_not_eix_eigul.poll() is not None:
+                    break
+                data_in_game = pid_game_that_not_eix_eigul.stdout.readline().decode()
+                print(data_in_game)
+                if 'Sorry Game Over Try Again!' in data_in_game:
+                    won_in_brike_breaker_game = True
+                if 'score' in data_in_game:
+                    data_in_game = data_in_game.split(" ")
+                    data_in_game = data_in_game[1]
+                    data_in_game = data_in_game.split("\r")
+                    score = data_in_game[0]
+                    score = int(score)
+
+            #pid_client.communicate()
+
+
+            if won_in_brike_breaker_game == True:
+                message = pickle.dumps(["WinnerBrikeBreaker", self.name_player])
+                my_socket.send(message)
+
+            if score != 0:
+                if game == "color":
+                    message = pickle.dumps(["WinnerColorGame", score, self.name_player])
+                else:
+                    message = pickle.dumps(["WinnerSnakeGame", score, self.name_player])
+
+                my_socket.send(message)
+
+
+            message = pickle.dumps(["FinishGame", game, self.name_player])
+            my_socket.send(message)
+
+        except:
+            print("the client close the game!")
+
 
 
     def thread_eix_eigul(self, which_player_file, my_socket, port_eix_eigul):
@@ -235,13 +551,11 @@ class Player:
                 message = pickle.dumps(["WinnerEixEigul", self.name_player])
                 my_socket.send(message)
 
-            message = pickle.dumps(["FinishEixEigulGame", self.name_player])
+            message = pickle.dumps(["FinishGame", "eix eigul", self.name_player])
             my_socket.send(message)
 
         except:
             print("the client close the game!")
-
-
 
 
 class TreatMessages:
@@ -263,6 +577,9 @@ class TreatMessages:
     def get_last_message(self):
         return self.last_message
 
+    def get_zira(self):
+        return self.zira
+
     def draw_new_board(self):
 
         while True:
@@ -270,7 +587,7 @@ class TreatMessages:
                 self.data_clients = self.my_socket.recv(1024)
                 self.data_clients = pickle.loads(self.data_clients)
                 print(self.data_clients)
-                if self.data_clients[0] == "you are waiting or playing" or self.data_clients[0] == "player_x.py" or self.data_clients[0] == "player_o.py":
+                if self.data_clients[0] == "you are waiting or playing" or self.data_clients[0] == "player_x.py" or self.data_clients[0] == "player_o.py" or self.data_clients[0] == "brike_breaker_game.py" or self.data_clients[0] == "color_game.py" or self.data_clients[0] == "snake_game.py":
                     time.sleep(0.2)
                 else:
                     if self.data_clients[0] == "control board":
@@ -291,7 +608,7 @@ class TreatMessages:
                 self.last_message = last_message
                 x = threading.Thread(target=self.delete_message, args=(name_player,))
                 x.start()
-            message = pickle.dumps(["PlayerValues", first_place_x, first_place_y, name_player, self.last_message])
+            message = pickle.dumps(["PlayerValues", first_place_x, first_place_y, name_player, self.last_message, self.zira.get_background_picture()])
             self.my_socket.send(message)
 
         except:
@@ -322,9 +639,13 @@ def main():
 
     pygame.init()
 
-    WINDOW_WIDTH = int(my_socket.recv(4).decode())
-    WINDOW_HEIGHT = int(my_socket.recv(3).decode())
-    place = my_socket.recv(1024).decode()
+    try:
+        WINDOW_WIDTH = int(my_socket.recv(4).decode())
+        WINDOW_HEIGHT = int(my_socket.recv(3).decode())
+        place = my_socket.recv(1024).decode()
+    except:
+        my_socket.close()
+        sys.exit()
 
     size = (WINDOW_WIDTH, WINDOW_HEIGHT)
     screen = pygame.display.set_mode(size)
@@ -339,7 +660,7 @@ def main():
 
     data_clients = []
 
-    data_clients.append([player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), ''])
+    data_clients.append([player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), '', "forest"])
 
     zira = Zira(screen)
 
@@ -349,73 +670,62 @@ def main():
 
     player.set_treat_messages(treat_messages)
 
-    send_data_clients = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(),player.get_name_player(), ''])
+    send_data_clients = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), '', "forest"])
     my_socket.send(send_data_clients)
 
     x = threading.Thread(target=treat_messages.draw_new_board)
     x.start()
 
     finish1 = False
-    while not finish1:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                finish1 = True
-                message = pickle.dumps(["Exit", player.get_name_player()])
-                my_socket.send(message)
-                time.sleep(0.2)
-                my_socket.close()
-                sys.exit()
+    try:
+        while not finish1:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    finish1 = True
+                    message = pickle.dumps(["Exit", player.get_name_player()])
+                    my_socket.send(message)
+                    time.sleep(0.2)
+                    my_socket.close()
+                    sys.exit()
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
-                pos_x = pos[0]
-                pos_y = pos[1]
-                print("pos_x= " + str(pos_x) + " pos_y= " + str(pos_y))
-                # אם המשתמש לחץ על המלבן הלבן האומר שהוא רוצה לשלוח הודעה
-                if (pos_x >= 571 and pos_x <= 808) and (pos_y >= 655 and pos_y <= 694):
-                    root = Tk()
-                    gui = chat.GUI(root, player.get_starting_bear_point_x(), player.get_starting_bear_point_y(),player.get_name_player(), treat_messages)
-                    root.mainloop()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    pos_x = pos[0]
+                    pos_y = pos[1]
+                    print("pos_x= " + str(pos_x) + " pos_y= " + str(pos_y))
 
-                else:
-                    # אם המשתמש לחץ על התיבה זה אומר שהוא רוצה לשחק עם מישהו ולכן כל מי שלוחץ על התיבה צריך להיות באותו מקום ממנה
-                    if (pos_x >= zira.get_BOX_POINT_X() and pos_x <= 306) and (pos_y >= zira.get_BOX_POINT_Y() and pos_y <= 566):
-                        player.set_clicked_on_box()
-
-                        player.move_player(pos_x - 100, pos_y - 100)
-
-                    else:
-                        #אם המשתמש לחץ על המלבן הלבן האומר שהוא רוצה לראות את לוח הבקרה של המשחק
-                        if(pos_x >= 108 and pos_x <= 491) and (pos_y >= 69 and pos_y <= 102):
-
-                            if zira.get_clicked_for_showing_control_board() == False:
-
-                                message = pickle.dumps(["controlBoard"])
-                                my_socket.send(message)
-
-                            else:
-
-                                player.move_player(pos_x - 100, pos_y - 100)
-
-                        else:
-
-                            # אם המשתמש לחץ על האיקס של הלוח בקרה האומר שהוא רוצה לסגור את הלוח
-                            if (pos_x >= 115 and pos_x <= 162) and (pos_y >= 157 and pos_y <= 185):
-
-                                if zira.get_clicked_for_showing_control_board() == True:
-
-                                    zira.set_clicked_for_showing_control_board(False)
-                                    message = pickle.dumps(["PlayerValues", player.get_starting_bear_point_x(), player.get_starting_bear_point_y(), player.get_name_player(), treat_messages.get_last_message()])
-                                    my_socket.send(message)
-
-                                else:
-
-                                    player.move_player(pos_x - 100, pos_y - 100)
-                            else:
-
-                                player.move_player(pos_x - 100, pos_y - 100)
-
-
+                    is_user_want_send_everyone_message = user_want_send_everyone_message(pos_x, pos_y, player, treat_messages)
+                    if is_user_want_send_everyone_message == False:
+                        is_user_clicked_on_box_to_play = user_clicked_on_box_to_play(pos_x, pos_y, zira, player)
+                        if is_user_clicked_on_box_to_play == False:
+                            is_user_want_to_see_control_board = user_want_to_see_control_board(pos_x, pos_y, player, zira, my_socket)
+                            if is_user_want_to_see_control_board == False:
+                                is_user_want_close_control_board = user_want_close_control_board(pos_x, pos_y, player, zira, my_socket, treat_messages)
+                                if is_user_want_close_control_board == False:
+                                    is_user_want_to_go_to_pool_background = user_want_to_go_to_pool_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket)
+                                    if is_user_want_to_go_to_pool_background == False:
+                                        is_user_want_to_go_to_forest_from_pool_background = user_want_to_go_to_forest_from_pool_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket)
+                                        if is_user_want_to_go_to_forest_from_pool_background == False:
+                                            is_user_want_to_go_to_slides_from_forest_background = user_want_to_go_to_slides_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket)
+                                            if is_user_want_to_go_to_slides_from_forest_background == False:
+                                                is_user_want_to_go_to_forest_from_slides_background = user_want_to_go_to_forest_from_slides_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket)
+                                                if is_user_want_to_go_to_forest_from_slides_background == False:
+                                                    is_user_want_to_go_to_vacation_from_forest_background = user_want_to_go_to_vacation_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira, treat_messages, my_socket)
+                                                    if is_user_want_to_go_to_vacation_from_forest_background == False:
+                                                        is_user_want_to_go_to_forest_from_vacation_background = user_want_to_go_to_forest_from_vacation_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira,treat_messages, my_socket)
+                                                        if is_user_want_to_go_to_forest_from_vacation_background == False:
+                                                            is_user_want_to_go_to_beach_from_forest_background = user_want_to_go_to_beach_from_forest_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira,treat_messages, my_socket)
+                                                            if is_user_want_to_go_to_beach_from_forest_background == False:
+                                                                is_user_want_to_go_to_forest_from_beach_background = user_want_to_go_to_forest_from_beach_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira,treat_messages, my_socket)
+                                                                if is_user_want_to_go_to_forest_from_beach_background == False:
+                                                                    player.move_player(pos_x - 100, pos_y - 100)
+    except:
+        finish1 = True
+        message = pickle.dumps(["Exit", player.get_name_player()])
+#        my_socket.send(message)
+#        time.sleep(0.2)
+#        my_socket.close()
+        sys.exit()
 
 
 if __name__ == '__main__':

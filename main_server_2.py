@@ -10,17 +10,26 @@ import select
 import pickle
 import sqlite3
 import threading
+import  pyautogui
 
-WINDOW_WIDTH = 1380
-WINDOW_HEIGHT = 710
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
 STARTING_BEAR_POINT_X = 1000
 STARTING_BEAR_POINT_Y = 300
 BOX_POINT_X = 200
 BOX_POINT_Y = 500
 CLICK_FOR_SENDING_MESSAGE_POINT_X = 690
 CLICK_FOR_SENDING_MESSAGE_POINT_Y = 690
-PORT_EIX_EIGUL = 8000
-SQL_DATABASE_NAME = "db_member_2.db"
+
+SERVER_ID                          = 1
+MATE_SERVER_ID                     = 2
+PORT_EIX_EIGUL_MAX_RANGE           = 5000
+PORT_EIX_EIGUL_START_PORT_SERVER_1 = 10000
+PORT_EIX_EIGUL_START_PORT_SERVER_2 = 20000
+PORT_EIX_EIGUL                     = PORT_EIX_EIGUL_START_PORT_SERVER_1
+
+#SQL_DATABASE_NAME = "db_member.db"
+global SQL_DATABASE_NAME
 
 
 def send_client_board_game(current_socket):
@@ -31,12 +40,14 @@ def send_client_board_game(current_socket):
 
 
 def change_status_to_connected(mate_server_socket, name_player):
-    print("change_status_to_connected name_player=" + str(name_player) + " statusPlayerInGame=connected")
+    global  SERVER_ID
+
+    print("change_status_to_connected SERVER_ID="+str(SERVER_ID) + " name_player=" + str(name_player) + " statusPlayerInGame=connected")
 
     conn = sqlite3.connect(SQL_DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("UPDATE `member` SET `statusPlayerInGame` = ? WHERE `username` = ?",
-                   (str("connected"), str(name_player)))
+    cursor.execute("UPDATE `member` SET `serverId` = ?, `statusPlayerInGame` = ? WHERE `userName` = ?",
+                   (int(SERVER_ID),str("connected"), str(name_player)))
     conn.commit()
     conn.close()
     get_and_send_row_to_mate_server(mate_server_socket, name_player)
@@ -46,7 +57,7 @@ def init_database():
     conn = sqlite3.connect(SQL_DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute(
-        "CREATE TABLE IF NOT EXISTS `member` (mem_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT, password TEXT, firstname TEXT, lastname TEXT, statusEixEigulGame TEXT, portEixEigul INTEGER, numberOfWinsEixEigul INTEGER, statusPlayerInGame TEXT, socket TEXT)")
+        "CREATE TABLE IF NOT EXISTS `member` (mem_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, serverId INTEGER, userName TEXT, password TEXT, firstName TEXT, lastName TEXT, statusEixEigulGame TEXT, portEixEigul INTEGER, numberOfWinsEixEigul INTEGER, statusBrikeBreakerGame TEXT, numberOfWinsBrikeBreakerGame INTEGER, statusSnakeGame TEXT, scoreOfSnakeGame INTEGER, statusColorGame TEXT, scoreOfColorGame INTEGER, statusPlayerInGame TEXT, socket TEXT)")
     conn.commit()
     conn.close()
 
@@ -58,6 +69,44 @@ def clear_database():
     conn.commit()
     conn.close()
 
+
+def clear_mate_palayer_status_in_databased():
+    global  MATE_SERVER_ID
+
+    conn = sqlite3.connect(SQL_DATABASE_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM `member` WHERE `serverId` = ?", (int(MATE_SERVER_ID),))
+
+    list_user = cursor.fetchall()
+
+    for row in list_user:
+        userName = row[2]
+        print("Clear Mate players status userName=" + userName)
+        cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?, `statusBrikeBreakerGame` = ?, `statusSnakeGame` = ?, `statusColorGame` = ?, `statusPlayerInGame` = ?, `socket` = ? WHERE `userName` = ?",
+            ("not playing", 0, "not playing", "not playing", "not playing", "not connected", 0, userName))
+
+    conn.commit()
+    conn.close()
+
+def clear_palayer_status_in_databased():
+    global  MATE_SERVER_ID
+
+    conn = sqlite3.connect(SQL_DATABASE_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM `member`")
+
+    list_user = cursor.fetchall()
+
+    for row in list_user:
+        userName = row[2]
+        print("Clear Mate players status userName=" + userName)
+        cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?, `statusBrikeBreakerGame` = ?, `statusSnakeGame` = ?, `statusColorGame` = ?, `statusPlayerInGame` = ?, `socket` = ? WHERE `userName` = ?",
+            ("not playing", 0, "not playing", "not playing", "not playing", "not connected", 0, userName))
+
+    conn.commit()
+    conn.close()
 
 def server_connect(list_client):
     command = list_client[0]
@@ -71,129 +120,436 @@ def server_connect(list_client):
 def Exit(list_client, current_socket, mate_server_socket):
     command = list_client[0]
     if command == 'Exit':
-        print("Exit command=" + command + " user_name=" + list_client[1])
         current_socket.close()
         name_player = list_client[1]
         print("Exit command=" + command + " name_player=" + name_player)
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?, `statusPlayerInGame` = ?, `socket` = ? WHERE `username` = ?",
-            ("not playing", 0, "not connected", 0, name_player))
+        cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?, `statusBrikeBreakerGame` = ?, `statusSnakeGame` = ?, `statusColorGame` = ?, `statusPlayerInGame` = ?, `socket` = ? WHERE `userName` = ?",
+            ("not playing", 0, "not playing", "not playing", "not playing", "not connected", 0, name_player))
         conn.commit()
-        get_and_send_row_to_mate_server(mate_server_socket, name_player)
         conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, name_player)
         return True
 
     return False
 
 
-def check_info_about_the_game(list_client, current_socket):
+def check_info_about_eix_eigul_game(list_client, current_socket):
+
     command = list_client[0]
 
     if command == 'controlBoard':
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT MAX(numberOfWinsEixEigul) FROM `member`")
-        number_of_wins = cursor.fetchone()[0]
+        background_picture = list_client[1]
+        if background_picture == 'forest':
+            cursor.execute("SELECT MAX(numberOfWinsEixEigul) FROM `member`")
+            number_of_wins = cursor.fetchone()[0]
 
-        string_of_the_names = ''
+            string_of_the_names = ''
 
-        if number_of_wins == 0:
-            string_of_the_names = "No one won yet!"
-        else:
-            cursor.execute("SELECT username FROM `member` WHERE `numberOfWinsEixEigul` = ?", (number_of_wins,))
-            list_tuple_of_the_names = cursor.fetchall()
+            if number_of_wins == 0:
+                string_of_the_names = "No one won yet!"
+            else:
+                cursor.execute("SELECT userName FROM `member` WHERE `numberOfWinsEixEigul` = ?", (number_of_wins,))
+                list_tuple_of_the_names = cursor.fetchall()
 
-            for i in range(len(list_tuple_of_the_names)):
+                for i in range(len(list_tuple_of_the_names)):
 
-                if i == 0:
-                    string_of_the_names = list_tuple_of_the_names[i][0]
-                else:
-                    string_of_the_names = string_of_the_names + ", " + list_tuple_of_the_names[i][0]
+                    if i == 0:
+                        string_of_the_names = list_tuple_of_the_names[i][0]
+                    else:
+                        string_of_the_names = string_of_the_names + ", " + list_tuple_of_the_names[i][0]
 
-        cursor.execute("SELECT COUNT(statusEixEigulGame) FROM `member` WHERE statusEixEigulGame = 'playing'")
-        number_of_eix_eigul_players = cursor.fetchone()[0]
 
-        message_control_board = pickle.dumps(
-            ["control board", string_of_the_names, number_of_wins, number_of_eix_eigul_players])
+            cursor.execute("SELECT COUNT(statusEixEigulGame) FROM `member` WHERE statusEixEigulGame = 'playing'")
+            number_of_eix_eigul_players = cursor.fetchone()[0]
 
-        current_socket.send(message_control_board)
-        conn.close()
-        return True
+            message_control_board = pickle.dumps(["control board", "eix eigul", string_of_the_names, number_of_wins, number_of_eix_eigul_players])
+            current_socket.send(message_control_board)
+            conn.close()
+            return True
 
     return False
 
 
+def check_info_about_brike_breaker_game(list_client, current_socket):
+
+    command = list_client[0]
+
+    if command == 'controlBoard':
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+
+        background_picture = list_client[1]
+        if background_picture == 'pool':
+            cursor.execute("SELECT MAX(numberOfWinsBrikeBreakerGame) FROM `member`")
+            number_of_wins = cursor.fetchone()[0]
+
+            string_of_the_names = ''
+
+            if number_of_wins == 0:
+                string_of_the_names = "No one won yet!"
+            else:
+                cursor.execute("SELECT userName FROM `member` WHERE `numberOfWinsBrikeBreakerGame` = ?", (number_of_wins,))
+                list_tuple_of_the_names = cursor.fetchall()
+
+                for i in range(len(list_tuple_of_the_names)):
+
+                    if i == 0:
+                        string_of_the_names = list_tuple_of_the_names[i][0]
+                    else:
+                        string_of_the_names = string_of_the_names + ", " + list_tuple_of_the_names[i][0]
+
+            cursor.execute("SELECT COUNT(statusBrikeBreakerGame) FROM `member` WHERE statusBrikeBreakerGame = 'playing'")
+            number_of_brike_breaker_players = cursor.fetchone()[0]
+
+            message_control_board = pickle.dumps(["control board", "brike breaker", string_of_the_names, number_of_wins, number_of_brike_breaker_players])
+            current_socket.send(message_control_board)
+            conn.close()
+            return True
+
+    return False
+
+
+def check_info_about_color_game(list_client, current_socket):
+
+    command = list_client[0]
+
+    if command == 'controlBoard':
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+        background_picture = list_client[1]
+        if background_picture == 'vacation' or background_picture == 'beach':
+            cursor.execute("SELECT MAX(scoreOfColorGame) FROM `member`")
+            score = cursor.fetchone()[0]
+
+            string_of_the_names = ''
+
+            if score == 0:
+                string_of_the_names = "No one did scores!"
+            else:
+                cursor.execute("SELECT userName FROM `member` WHERE `scoreOfColorGame` = ?", (score,))
+                list_tuple_of_the_names = cursor.fetchall()
+
+                for i in range(len(list_tuple_of_the_names)):
+
+                    if i == 0:
+                        string_of_the_names = list_tuple_of_the_names[i][0]
+                    else:
+                        string_of_the_names = string_of_the_names + ", " + list_tuple_of_the_names[i][0]
+
+            cursor.execute("SELECT COUNT(statusColorGame) FROM `member` WHERE statusColorGame = 'playing'")
+            number_of_color_players = cursor.fetchone()[0]
+
+            message_control_board = pickle.dumps(["control board", "color", string_of_the_names, score, number_of_color_players])
+            conn.close()
+            current_socket.send(message_control_board)
+            return True
+
+    return False
+
+
+def check_info_about_snake_game(list_client, current_socket):
+
+    command = list_client[0]
+
+    if command == 'controlBoard':
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+        background_picture = list_client[1]
+        if background_picture == 'slides':
+            cursor.execute("SELECT MAX(scoreOfSnakeGame) FROM `member`")
+            score = cursor.fetchone()[0]
+
+            string_of_the_names = ''
+
+            if score == 0:
+                string_of_the_names = "No one did scores!"
+            else:
+                cursor.execute("SELECT userName FROM `member` WHERE `scoreOfSnakeGame` = ?", (score,))
+                list_tuple_of_the_names = cursor.fetchall()
+
+                for i in range(len(list_tuple_of_the_names)):
+
+                    if i == 0:
+                        string_of_the_names = list_tuple_of_the_names[i][0]
+                    else:
+                        string_of_the_names = string_of_the_names + ", " + list_tuple_of_the_names[i][0]
+
+            cursor.execute("SELECT COUNT(statusSnakeGame) FROM `member` WHERE statusSnakeGame = 'playing'")
+            number_of_snake_players = cursor.fetchone()[0]
+
+            message_control_board = pickle.dumps(["control board", "snake", string_of_the_names, score, number_of_snake_players])
+            conn.close()
+            current_socket.send(message_control_board)
+            return True
+
+    return False
+
+def is_playing_game(USERNAME):
+
+    conn = sqlite3.connect(SQL_DATABASE_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT statusEixEigulGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+    is_not_playing_eix_eigul = cursor.fetchone()[0]
+
+    cursor.execute("SELECT statusSnakeGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+    is_not_playing_snake = cursor.fetchone()[0]
+
+    cursor.execute("SELECT statusColorGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+    is_not_playing_color = cursor.fetchone()[0]
+
+    cursor.execute("SELECT statusBrikeBreakerGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+    is_not_playing_brike_breaker = cursor.fetchone()[0]
+
+    if is_not_playing_eix_eigul == 'not playing' and is_not_playing_snake == 'not playing' and is_not_playing_color == 'not playing' and is_not_playing_brike_breaker == 'not playing':
+        conn.close()
+        return False
+
+    conn.close()
+    return True
+
 def change_status_eix_eigul_game(list_client, current_socket, mate_server_socket):
     global PORT_EIX_EIGUL
+    global PORT_EIX_EIGUL_MAX_RANGE
+    global SERVER_ID
 
     command = list_client[0]
 
     if command == 'StatusEixEigulGame':
         USERNAME = list_client[1]
-        conn = sqlite3.connect(SQL_DATABASE_NAME)
-        cursor = conn.cursor()
 
-        cursor.execute("SELECT statusEixEigulGame FROM `member` WHERE `username` = ?", (str(USERNAME),))
-        is_not_playing = cursor.fetchone()[0]
+        if is_playing_game(USERNAME) == False:
+            conn = sqlite3.connect(SQL_DATABASE_NAME)
+            cursor = conn.cursor()
+            #cursor.execute("SELECT * FROM `member` WHERE `statusEixEigulGame` = ?", (str("waiting"), ))
+            cursor.execute("SELECT * FROM `member` WHERE `serverId` = ? and `statusEixEigulGame` = ?", (int (SERVER_ID), str("waiting")))
 
-        if is_not_playing == 'not playing':
-
-            cursor.execute("SELECT * FROM `member` WHERE `statusEixEigulGame` = ?", (str("waiting"),))
             if cursor.fetchone() is not None:
-                cursor.execute("SELECT username FROM `member` WHERE `statusEixEigulGame` = ?", (str("waiting"),))
+                cursor.execute("SELECT userName FROM `member` WHERE `serverId` = ? and `statusEixEigulGame` = ?", (int (SERVER_ID), str("waiting")))
                 username_of_other_player = cursor.fetchone()[0]
-                cursor.execute("SELECT portEixEigul FROM `member` WHERE `username` = ?",
-                               (str(username_of_other_player),))
+                cursor.execute("SELECT portEixEigul FROM `member` WHERE `userName` = ?", (str(username_of_other_player),))
                 port_eix_eigul = cursor.fetchone()[0]
-                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ? WHERE `username` = ?",
-                               (str("playing"), str(username_of_other_player)))
-                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ? WHERE `username` = ?",
-                               (str("playing"), port_eix_eigul, str(USERNAME)))
+                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ? WHERE `userName` = ?", (str("playing"), str(username_of_other_player)))
+                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ? WHERE `userName` = ?", (str("playing"), port_eix_eigul, str(USERNAME)))
                 conn.commit()
+                conn.close()
+                get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+                get_and_send_row_to_mate_server(mate_server_socket, username_of_other_player)
                 message_change_status_eix_eigul_game = ["player_o.py", port_eix_eigul]
             else:
-                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?  WHERE `username` = ?",
-                               (str("waiting"), PORT_EIX_EIGUL, str(USERNAME)))
+                cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ?  WHERE `userName` = ?", (str("waiting"), PORT_EIX_EIGUL, str(USERNAME)))
                 conn.commit()
+                conn.close()
+                get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
                 message_change_status_eix_eigul_game = ["player_x.py", PORT_EIX_EIGUL]
                 PORT_EIX_EIGUL = PORT_EIX_EIGUL + 1
 
+
             message_change_status_eix_eigul_game = pickle.dumps(message_change_status_eix_eigul_game)
             current_socket.send(message_change_status_eix_eigul_game)
-            get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
-            conn.close()
             return True
         else:
             message_change_status_eix_eigul_game = pickle.dumps(["you are waiting or playing"])
             current_socket.send(message_change_status_eix_eigul_game)
-            conn.close()
             return True
+
+    return False
+
+def change_status_brike_breaker_game(list_client, current_socket, mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'StatusBrikeBreakerGame':
+        USERNAME = list_client[1]
+
+        if is_playing_game(USERNAME) == False:
+            conn = sqlite3.connect(SQL_DATABASE_NAME)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE `member` SET `statusBrikeBreakerGame` = ? WHERE `userName` = ?",(str("playing"), str(USERNAME)))
+            conn.commit()
+
+            message_change_status_brike_breaker_game = ["brike_breaker_game.py"]
+
+            message_change_status_brike_breaker_game = pickle.dumps(message_change_status_brike_breaker_game)
+            conn.close()
+            current_socket.send(message_change_status_brike_breaker_game)
+            return True
+        else:
+            message_change_status_brike_breaker_game = pickle.dumps(["you are waiting or playing"])
+            current_socket.send(message_change_status_brike_breaker_game)
+            return True
+
+    return False
+
+
+def change_status_snake_game(list_client, current_socket, mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'StatusSnakeGame':
+        USERNAME = list_client[1]
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+
+        if is_playing_game(USERNAME) == False:
+
+            cursor.execute("UPDATE `member` SET `statusSnakeGame` = ? WHERE `userName` = ?",(str("playing"), str(USERNAME)))
+            conn.commit()
+
+            message_change_status_snake_game = ["snake_game.py"]
+
+            message_change_status_snake_game = pickle.dumps(message_change_status_snake_game)
+            conn.close()
+            current_socket.send(message_change_status_snake_game)
+            return True
+        else:
+            message_change_status_snake_game = pickle.dumps(["you are waiting or playing"])
+            current_socket.send(message_change_status_snake_game)
+            return True
+
+    return False
+
+
+def change_status_color_game(list_client, current_socket, mate_server_socket):
+    command = list_client[0]
+
+    if command == 'StatusColorGame':
+        USERNAME = list_client[1]
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+
+        if is_playing_game(USERNAME) == False:
+
+            cursor.execute("UPDATE `member` SET `statusColorGame` = ? WHERE `userName` = ?",(str("playing"), str(USERNAME)))
+            conn.commit()
+
+            change_status_color_game = ["color_game.py"]
+
+            change_status_color_game = pickle.dumps(change_status_color_game)
+            conn.close()
+            current_socket.send(change_status_color_game)
+            return True
+        else:
+            change_status_color_game = pickle.dumps(["you are waiting or playing"])
+            current_socket.send(change_status_color_game)
+            return True
+
+    return False
+
+def winner_eix_eigul(list_client,mate_server_socket):
+
+    command = list_client[0]
 
     if command == 'WinnerEixEigul':
         USERNAME = list_client[1]
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT numberOfWinsEixEigul FROM `member` WHERE `username` = ?", (str(USERNAME),))
+        cursor.execute("SELECT numberOfWinsEixEigul FROM `member` WHERE `userName` = ?", (str(USERNAME),))
         num_of_wins = cursor.fetchone()[0]
         num_of_wins = num_of_wins + 1
-        cursor.execute("UPDATE `member` SET `numberOfWinsEixEigul` = ? WHERE `username` = ?",
-                       (num_of_wins, str(USERNAME)))
+        cursor.execute("UPDATE `member` SET `numberOfWinsEixEigul` = ? WHERE `userName` = ?",(num_of_wins, str(USERNAME)))
         conn.commit()
-        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
         conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
         return True
 
-    if command == 'FinishEixEigulGame':
+    return False
+
+def winner_brike_breaker(list_client,mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'WinnerBrikeBreaker':
         USERNAME = list_client[1]
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ? WHERE `username` = ?",
-                       (str("not playing"), 0, str(USERNAME)))
-        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+        cursor.execute("SELECT numberOfWinsBrikeBreakerGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+        num_of_wins = cursor.fetchone()[0]
+        num_of_wins = num_of_wins + 1
+        cursor.execute("UPDATE `member` SET `numberOfWinsBrikeBreakerGame` = ? WHERE `userName` = ?",(num_of_wins, str(USERNAME)))
         conn.commit()
         conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+
+        return True
+
+    return False
+
+def winner_color(list_client,mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'WinnerColorGame':
+        score = list_client[1]
+        USERNAME = list_client[2]
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT scoreOfColorGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+        max_score_color_game = cursor.fetchone()[0]
+        if score > max_score_color_game:
+            cursor.execute("UPDATE `member` SET `scoreOfColorGame` = ? WHERE `userName` = ?", (score, str(USERNAME)))
+            conn.commit()
+
+        conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+
+        return True
+
+    return False
+
+def winner_snake(list_client, mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'WinnerSnakeGame':
+        score = list_client[1]
+        USERNAME = list_client[2]
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT scoreOfSnakeGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
+        max_score_snake_game = cursor.fetchone()[0]
+        if score > max_score_snake_game:
+            cursor.execute("UPDATE `member` SET `scoreOfSnakeGame` = ? WHERE `userName` = ?", (score, str(USERNAME)))
+            conn.commit()
+        conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+
+        return True
+
+    return False
+
+def finish_game(list_client, mate_server_socket):
+
+    command = list_client[0]
+
+    if command == 'FinishGame':
+        game = list_client[1]
+        USERNAME = list_client[2]
+        conn = sqlite3.connect(SQL_DATABASE_NAME)
+        cursor = conn.cursor()
+        if game == "eix eigul":
+            cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ? WHERE `userName` = ?", (str("not playing"), 0, str(USERNAME)))
+            conn.commit()
+
+        elif game == "brike breaker":
+            cursor.execute("UPDATE `member` SET `StatusBrikeBreakerGame` = ? WHERE `userName` = ?", (str("not playing"), str(USERNAME)))
+            conn.commit()
+
+        elif game == "snake":
+            cursor.execute("UPDATE `member` SET `statusSnakeGame` = ? WHERE `userName` = ?", (str("not playing"), str(USERNAME)))
+            conn.commit()
+
+        else:
+            cursor.execute("UPDATE `member` SET `StatusColorGame` = ? WHERE `userName` = ?", (str("not playing"), str(USERNAME)))
+            conn.commit()
+
+        conn.close()
+        get_and_send_row_to_mate_server(mate_server_socket, USERNAME)
+
         return True
 
     return False
@@ -201,6 +557,7 @@ def change_status_eix_eigul_game(list_client, current_socket, mate_server_socket
 
 def Register(list_client, current_socket, mate_server_socket):
     command = list_client[0]
+    global SERVER_ID
 
     if command == 'Register':
         USERNAME = list_client[1]
@@ -213,15 +570,15 @@ def Register(list_client, current_socket, mate_server_socket):
         if USERNAME == "" or PASSWORD == "" or FIRSTNAME == "" or LASTNAME == "":
             message_register = pickle.dumps(["Please complete the required field!", "orange"])
         else:
-            cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (USERNAME,))
+            cursor.execute("SELECT * FROM `member` WHERE `userName` = ?", (USERNAME,))
             if cursor.fetchone() is not None:
                 print("Username is already taken " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
                 message_register = pickle.dumps(["Username is already taken", "red"])
             else:
-                print("Username insert " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
-                cursor.execute("INSERT INTO `member` (username, password, firstname, lastname, statusEixEigulGame, portEixEigul, numberOfWinsEixEigul, statusPlayerInGame, socket) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (str(USERNAME), str(PASSWORD), str(FIRSTNAME), str(LASTNAME), str("not playing"), 0, 0,
-                     "not connected", 0))
+                print("Username insert " + command + " SERVER_ID"+ str(SERVER_ID)+" USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
+                cursor.execute("INSERT INTO `member` (serverId, userName, password, firstName, lastName, statusEixEigulGame, portEixEigul, numberOfWinsEixEigul, StatusBrikeBreakerGame, numberOfWinsBrikeBreakerGame, StatusSnakeGame, scoreOfSnakeGame, StatusColorGame, scoreOfColorGame, statusPlayerInGame, socket) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (int(SERVER_ID),str(USERNAME), str(PASSWORD), str(FIRSTNAME), str(LASTNAME), str("not playing"), 0, 0,
+                     "not playing", 0, "not playing", 0, "not playing", 0, "not connected", 0))
                 conn.commit()
                 message_register = pickle.dumps(["Successfully Created!", "black"])
 
@@ -231,7 +588,7 @@ def Register(list_client, current_socket, mate_server_socket):
         print("send to client Register reply")
         current_socket.send(message_register)
         print("send to mate server ServerUpdate")
-        message_server_register = pickle.dumps(["ServerUpdate", USERNAME, PASSWORD, FIRSTNAME, LASTNAME, "not playing", 0 , 0, "not connected", 0])
+        message_server_register = pickle.dumps(["ServerUpdate", SERVER_ID, USERNAME, PASSWORD, FIRSTNAME, LASTNAME, "not playing", 0 , 0, "not playing", 0, "not playing", 0, "not playing", 0, "not connected", 0])
 
         if mate_server_socket:
             mate_server_socket.send(message_server_register)
@@ -254,14 +611,14 @@ def UnRegister(list_client, current_socket, mate_server_socket):
         if USERNAME == "" or PASSWORD == "":
             message_unregister = pickle.dumps(["Please complete the required field!", "orange"])
         else:
-            cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (USERNAME,))
+            cursor.execute("SELECT * FROM `member` WHERE `userName` = ?", (USERNAME,))
             if cursor.fetchone() is None:
                 print("Username is dosn't exist " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
                 message_unregister = pickle.dumps(["Username is dosn't exist", "red"])
             else:
                 print("Username delete " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
-                cursor.execute("DELETE FROM `member` WHERE `username` = ?", str(USERNAME))
-                #cursor.execute("DELETE FROM `member` WHERE `username` = cfff")
+                cursor.execute("DELETE FROM `member` WHERE `userName` = ?", str(USERNAME))
+                #cursor.execute("DELETE FROM `member` WHERE `userName` = cfff")
                 conn.commit()
                 message_unregister = pickle.dumps(["Successfully deleted!", "black"])
 
@@ -285,41 +642,48 @@ def server_update(list_client):
     command = list_client[0]
 
     if command == 'ServerUpdate':
-        user_name = list_client[1]
-        password = list_client[2]
-        first_name = list_client[3]
-        last_name = list_client[4]
+        server_id               = list_client[1]
+        user_name               = list_client[2]
+        password                = list_client[3]
+        first_name              = list_client[4]
+        last_name               = list_client[5]
+        statusEixEigulGame      = list_client[6]
+        portEixEigul            = list_client[7]
+        numberOfWinsEixEigul    = list_client[8]
 
-        statusEixEigulGame = list_client[5]
-        portEixEigul = list_client[6]
-        numberOfWinsEixEigul = list_client[7]
-        statusPlayerInGame = list_client[8]
-        socket = list_client[9]
+        statusBrikeBreakerGame  = list_client[9]
+        numberOfWinsBrikeBreakerGame= list_client[10]
+        statusSnakeGame         = list_client[11]
+        scoreOfSnakeGame        = list_client[12]
+        statusColorGame         = list_client[13]
+        scoreOfColorGame        = list_client[14]
+        statusPlayerInGame      = list_client[15]
 
-        print("receive ServerUpdate user_name="+user_name+" password="+password+" statusEixEigulGame="+statusEixEigulGame+" statusPlayerInGame="+statusPlayerInGame)
-
-
-        # print("receive " + command + " user_name=" + user_name + " password=" + password + " statusPlayerInGame=" + statusPlayerInGame)
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (user_name,))
+        cursor.execute("SELECT * FROM `member` WHERE `userName` = ?", (user_name))
         if cursor.fetchone() is not None:
-            print(
-                "Username update " + command + " user_name=" + user_name + " password=" + password + " statusPlayerInGame=" + statusPlayerInGame + " statusEixEigulGame=" + statusEixEigulGame)
+            print("Username update " + command + " server_id=" + str(server_id) + " user_name=" + user_name + " statusPlayerInGame=" + statusPlayerInGame)
 
+#            cursor.execute(
+#                "UPDATE `member` SET 'server_id' = ? , `password` = ?, `firstName` = ?,`lastName` = ? ,`statusEixEigulGame` = ?, portEixEigul = ? ,`numberOfWinsEixEigul` = ? ,`statusBrikeBreakerGame` = ?,`numberOfWinsBrikeBreakerGame` = ?,`statusSnakeGame` = ?,`scoreOfSnakeGame` = ?,`statusColorGame` = ?,`scoreOfColorGame`= ? ,`statusPlayerInGame` = ? WHERE `userName` = ?",
+#                (int(server_id), str(password), str(first_name), str(last_name), str(statusEixEigulGame), int(portEixEigul),  int(numberOfWinsEixEigul),
+#                 str(statusBrikeBreakerGame), int(numberOfWinsBrikeBreakerGame), str(statusSnakeGame), int(scoreOfSnakeGame), str(statusColorGame), int(scoreOfColorGame),
+#                 str(statusPlayerInGame), str(user_name)))
             cursor.execute(
-                "UPDATE `member` SET `password` = ?, `firstname` = ?,`lastname` = ? ,`statusEixEigulGame` = ?,`numberOfWinsEixEigul` = ? ,`statusPlayerInGame` = ? WHERE `username` = ?",
-                (str(password), str(first_name), str(last_name), str(statusEixEigulGame), int(numberOfWinsEixEigul),
+                "UPDATE `member` SET `serverId` = ?, `password` = ?, `firstName` = ?,`lastName` = ? ,`statusEixEigulGame` = ?, portEixEigul = ? ,`numberOfWinsEixEigul` = ? ,`statusBrikeBreakerGame` = ?,`numberOfWinsBrikeBreakerGame` = ?,`statusSnakeGame` = ?,`scoreOfSnakeGame` = ?,`statusColorGame` = ?,`scoreOfColorGame`= ? ,`statusPlayerInGame` = ? WHERE `userName` = ?",
+                (str(server_id), str(password), str(first_name), str(last_name), str(statusEixEigulGame), int(portEixEigul),  int(numberOfWinsEixEigul),
+                 str(statusBrikeBreakerGame), int(numberOfWinsBrikeBreakerGame), str(statusSnakeGame), int(scoreOfSnakeGame), str(statusColorGame), int(scoreOfColorGame),
                  str(statusPlayerInGame), str(user_name)))
 
             conn.commit()
         else:
-            print(
-                "Username insert " + command + " user_name=" + user_name + " password=" + password + " statusPlayerInGame=" + statusPlayerInGame + " statusEixEigulGame=" + statusEixEigulGame)
+            print("Username insert " + command + " user_name=" + user_name + " statusPlayerInGame=" + statusPlayerInGame + " statusEixEigulGame=" + statusEixEigulGame)
             cursor.execute(
-                "INSERT INTO `member` (username, password, firstname, lastname, statusEixEigulGame, numberOfWinsEixEigul, statusPlayerInGame, socket) VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
-                (str(user_name), str(password), str(first_name), str(last_name), str(statusEixEigulGame),
-                 int(numberOfWinsEixEigul), str(statusPlayerInGame), 0))
+                "INSERT INTO `member` (serverid, userName, password, firstName, lastName, statusEixEigulGame, portEixEigul, numberOfWinsEixEigul, statusBrikeBreakerGame ,numberOfWinsBrikeBreakerGame ,statusSnakeGame, scoreOfSnakeGame, statusColorGame , scoreOfColorGame , statusPlayerInGame ,  socket) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (int(server_id), str(user_name), str(password), str(first_name), str(last_name), str(statusEixEigulGame), int(portEixEigul), int(numberOfWinsEixEigul),
+                 str(statusBrikeBreakerGame), int(numberOfWinsBrikeBreakerGame), str(statusSnakeGame), int(scoreOfSnakeGame), str(statusColorGame), int(scoreOfColorGame),
+                 str(statusPlayerInGame), 0))
             conn.commit()
 
         cursor.close()
@@ -336,14 +700,14 @@ def server_delete_update(list_client):
         user_name = list_client[1]
         password = list_client[2]
 
-        print("receive ServerDeleteUpdate user_name="+user_name+" password="+password)
+        print("receive ServerDeleteUpdate user_name="+user_name)
 
         conn = sqlite3.connect(SQL_DATABASE_NAME)
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (user_name,))
+        cursor.execute("SELECT * FROM `member` WHERE `userName` = ? and 'password' = ?", (user_name,password))
         if cursor.fetchone() is not None:
-            print("Username update " + command + " user_name=" + user_name + " password=" + password)
-            cursor.execute("DELETE FROM `member` WHERE `username` = ?",str(user_name))
+            print("Username update " + command + " user_name=" + user_name)
+            cursor.execute("DELETE FROM `member` WHERE `userName` = ?",str(user_name))
             conn.commit()
 
         cursor.close()
@@ -355,6 +719,8 @@ def server_delete_update(list_client):
 
 
 def Login(list_client, current_socket):
+    global  SERVER_ID
+
     command = list_client[0]
 
     if command == 'Login':
@@ -365,14 +731,14 @@ def Login(list_client, current_socket):
         if USERNAME == "" or PASSWORD == "":
             message_login = pickle.dumps(["Please complete the required field!", "orange"])
         else:
-            cursor.execute("SELECT * FROM `member` WHERE `username` = ? and `password` = ?", (USERNAME, PASSWORD))
+            cursor.execute("SELECT * FROM `member` WHERE `userName` = ? and `password` = ?", (USERNAME, PASSWORD))
             if cursor.fetchone() is not None:
-                cursor.execute("SELECT statusPlayerInGame FROM `member` WHERE `username` = ?", (str(USERNAME),))
+                cursor.execute("SELECT statusPlayerInGame FROM `member` WHERE `userName` = ?", (str(USERNAME),))
                 status_player_in_game = cursor.fetchone()[0]
                 if status_player_in_game == 'not connected':
                     message_login = pickle.dumps(["You Successfully Login", "blue"])
-                    cursor.execute("UPDATE `member` SET `statusPlayerInGame` = ?,`socket` = ? WHERE `username` = ?",
-                                   (str("connecting"), str(current_socket), str(USERNAME)))
+                    cursor.execute("UPDATE `member` SET 'serverId' = ?, `statusPlayerInGame` = ?,`socket` = ? WHERE `userName` = ?",
+                                   (str(SERVER_ID),str("connecting"), str(current_socket), str(USERNAME)))
                     conn.commit()
                     print("user update user=" + str(USERNAME) + " statusPlayerInGame=connecting")
                 else:
@@ -393,31 +759,44 @@ def Login(list_client, current_socket):
 
 
 def send_row_to_mate_server(mate_server_socket: object, row):
-    user_name           = row[1]
-    password            = row[2]
-    first_name          = row[3]
-    last_name           = row[4]
-    statusEixEigulGame  = row[5]
-    portEixEigul        = row[6]
-    numberOfWinsEixEigul = row[7]
-    statusPlayerInGame  = row[8]
-    socket              = row[9]
+    server_id           = row[1]
+    user_name           = row[2]
+    password            = row[3]
+    first_name          = row[4]
+    last_name           = row[5]
+    statusEixEigulGame  = row[6]
+    portEixEigul        = row[7]
+    numberOfWinsEixEigul = row[8]
+    statusBrikeBreakerGame = row[9]
+    numberOfWinsBrikeBreakerGame = row[10]
+    statusSnakeGame = row[11]
+    scoreOfSnakeGame = row[12]
+    statusColorGame = row[13]
+    scoreOfColorGame = row[14]
+    statusPlayerInGame = row[15]
 
+    print("send to mate: server_id="+ str(server_id) +" user_name"+user_name + " statusEixEigulGame="+statusEixEigulGame + " portEixEigul"+ str(portEixEigul))
     if mate_server_socket:
-        data_update = pickle.dumps(["ServerUpdate", user_name, password, first_name, last_name, statusEixEigulGame, portEixEigul,numberOfWinsEixEigul, statusPlayerInGame, socket])
-        print("send to mate:" + str(data_update))
+        data_update = pickle.dumps(["ServerUpdate", server_id, user_name, password, first_name, last_name, statusEixEigulGame, portEixEigul,numberOfWinsEixEigul, statusBrikeBreakerGame, numberOfWinsBrikeBreakerGame, statusSnakeGame, scoreOfSnakeGame,statusColorGame,scoreOfColorGame, statusPlayerInGame])
+        #print("send to mate:" + str(data_update))
         mate_server_socket.send(data_update)
 
 
 def get_and_send_row_to_mate_server(mate_server_socket, user_name):
+
+    if not mate_server_socket:
+        return
+
     conn = sqlite3.connect(SQL_DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (user_name,))
+    cursor.execute("SELECT * FROM `member` WHERE `userName` = ?", (user_name,))
     list_user = cursor.fetchall()
     print("get_and_send_row_to_mate_server")
 
     for row in list_user:
         send_row_to_mate_server(mate_server_socket, row)
+
+    conn.close()
 
 
 def sync_db_to_mate_server(mate_server_socket):
@@ -448,7 +827,7 @@ def send_all_clients(open_client_sockets, data_clients):
         for client in open_client_sockets:
 
             if list_tuple_of_the_sockets[i][0] == str(client):
-                print("data- " + str(data_clients))
+                #print("data- " + str(data_clients))
                 data_dump = pickle.dumps(data_clients)
                 client.send(data_dump)
                 break
@@ -475,6 +854,7 @@ def thread_mate_server(mate_server_socket):
 
 def thread_server_function(mate_server_socket):
     try:
+        clear_mate_palayer_status_in_databased()
         sync_db_to_mate_server(mate_server_socket)
     except:
         print("thread_server_function except")
@@ -498,12 +878,12 @@ def socket_has_been_closed(current_socket, rlist, data_clients, mate_server_sock
 
             for i in range(len(socket_id_and_user_name)):
                 print("socket_has_been_closed")
-                if current_socket == socket_id_and_user_name[i][1]:
-                    user_name = socket_id_and_user_name[i][0]
-                    list_client[0] = "Exit"
-                    list_client[1] = socket_id_and_user_name[i][0]
-                    Exit(list_client, current_socket, mate_server_socket)
-                    socket_id_and_user_name.remove(socket_id_and_user_name[i])
+                #if current_socket == socket_id_and_user_name[i][1]:
+                #    user_name = socket_id_and_user_name[i][0]
+                #    list_client[0] = "Exit"
+                #    list_client[1] = socket_id_and_user_name[i][0]
+                #    Exit(list_client, current_socket, mate_server_socket)
+                #    socket_id_and_user_name.remove(socket_id_and_user_name[i])
 
             for i in range(len(data_clients)):
                 print("socket_has_been_closed")
@@ -515,14 +895,22 @@ def main():
     """
     Add Documentation here
     """
+    global SQL_DATABASE_NAME
+    global PORT_EIX_EIGUL
+    global PORT_EIX_EIGUL_START_PORT_SERVER_2
+    global PORT_EIX_EIGUL_START_PORT_SERVER_1
+    global SERVER_ID
+    global MATE_SERVER_ID
+
     pass  # Replace Pass with Your Code
+
     print(sys.argv[1])
     my_ip = sys.argv[1]
     my_port = int(sys.argv[2])
 
     mate_server_ip = sys.argv[3]
     mate_server_port = int(sys.argv[4])
-    #SQL_DATABASE_NAME = sys.argv[5]
+    SQL_DATABASE_NAME = sys.argv[5]
 
     open_client_sockets = []
     data_clients = []
@@ -540,6 +928,9 @@ def main():
         mate_server_socket = socket.socket()
         mate_server_socket.connect((mate_server_ip, mate_server_port))
         clear_database()
+        SERVER_ID      = 2
+        MATE_SERVER_ID = 1
+        PORT_EIX_EIGUL = PORT_EIX_EIGUL_START_PORT_SERVER_2
         message_server_connect = pickle.dumps(["ServerConnect"])
         thread_mate_server(mate_server_socket)
         if mate_server_socket:
@@ -548,7 +939,8 @@ def main():
         # sync_db_to_mate_server(mate_server_socket) only the connected send the data !!
     except socket.error:
         mate_server_socket = 0;
-        print("no mate server")
+        clear_palayer_status_in_databased()
+        print("no mate server cleat all user status")
 
     server_socket.bind(('0.0.0.0', my_port))
     server_socket.listen(1)
@@ -579,14 +971,31 @@ def main():
                         is_exit = Exit(list_client, current_socket, mate_server_socket)
                         is_update = server_update(list_client)
                         is_delete_update = server_delete_update(list_client)
+                        is_delete_update = server_delete_update(list_client)
                         is_register = Register(list_client, current_socket, mate_server_socket)
                         is_unregister = UnRegister(list_client, current_socket, mate_server_socket)
                         is_login = Login(list_client, current_socket)
-                        is_control_board = check_info_about_the_game(list_client, current_socket)
-                        is_status_eix_eigul_Game = change_status_eix_eigul_game(list_client, current_socket,
-                                                                                mate_server_socket)
+                        is_check_info_about_eix_eigul_game = check_info_about_eix_eigul_game(list_client, current_socket)
+                        is_check_info_about_brike_breaker_game = check_info_about_brike_breaker_game(list_client,current_socket)
+                        is_check_info_about_color_game = check_info_about_color_game(list_client,current_socket)
+                        is_check_info_about_snake_game = check_info_about_snake_game(list_client, current_socket)
+                        is_status_eix_eigul_game = change_status_eix_eigul_game(list_client, current_socket, mate_server_socket)
+                        is_status_brike_breaker_game = change_status_brike_breaker_game(list_client, current_socket, mate_server_socket)
+                        is_status_snake_game = change_status_snake_game(list_client, current_socket, mate_server_socket)
+                        is_status_color_game = change_status_color_game(list_client, current_socket, mate_server_socket)
+                        is_winner_eix_eigul = winner_eix_eigul(list_client,mate_server_socket)
+                        is_winner_brike_breaker = winner_brike_breaker(list_client,mate_server_socket)
+                        is_winner_color = winner_color(list_client,mate_server_socket)
+                        is_winner_snake = winner_snake(list_client,mate_server_socket)
+                        is_finish_game = finish_game(list_client, mate_server_socket)
 
-                        if is_update == False and is_delete_update == False and is_server_connect == False and is_register == False and is_unregister == False and is_login == False and is_control_board == False and is_status_eix_eigul_Game == False and is_exit == False:
+                        if is_update == False and is_delete_update == False and is_server_connect == False and \
+                                is_unregister == False and is_register == False and is_login == False and is_exit == False and is_check_info_about_eix_eigul_game == False and \
+                                is_check_info_about_brike_breaker_game == False and is_check_info_about_color_game == False and is_check_info_about_snake_game == False \
+                                and is_status_eix_eigul_game == False and is_status_brike_breaker_game == False and \
+                                is_status_snake_game == False and is_status_color_game == False and is_winner_eix_eigul == False \
+                                and is_winner_brike_breaker == False and is_winner_color == False and is_winner_snake == False and is_finish_game == False:
+
                             found = False
                             for i in range(len(data_clients)):
                                 print("receive " + str(data_clients[i][2]) + " " + str(list_client[3]))
@@ -594,13 +1003,13 @@ def main():
                                     data_clients[i][0] = list_client[1]
                                     data_clients[i][1] = list_client[2]
                                     data_clients[i][3] = list_client[4]
-                                    print(
-                                        "receive server connect " + str(data_clients[i][2]) + " " + str(list_client[3]))
+                                    data_clients[i][4] = list_client[5]
+                                    print("receive server connect " + str(data_clients[i][2]) + " " + str(list_client[3]))
                                     found = True
 
                             if found == False:
                                 socket_id_and_user_name.append([list_client[3], current_socket]);
-                                data_clients.append([list_client[1], list_client[2], list_client[3], list_client[4]])
+                                data_clients.append([list_client[1], list_client[2], list_client[3], list_client[4], list_client[5]])
                                 change_status_to_connected(mate_server_socket, list_client[3])
 
                             print(str(data_clients))
