@@ -58,6 +58,14 @@ class EixEigul:
         return 'There is no winner!'
 
 
+def socket_has_been_closed(current_socket, rlist, open_client_sockets):
+
+    for current_socket in rlist:
+        try:
+            bytes_client = current_socket.recv(1024)
+            print("select.select current_socket=" + current_socket)
+        except:
+            open_client_sockets.remove(current_socket)
 
 
 def main():
@@ -88,66 +96,67 @@ def main():
     mate_socket = 0
     cur_socket = 1
     game_over= True
-    while game_over:
-        rlist, wlist, xlist = select.select([server_socket]+open_client_sockets, [], [])
-        for current_socket in rlist:
-            if current_socket is server_socket:
-                (new_socket,address) = server_socket.accept()
-                print('socket created '+ str(address))
-                open_client_sockets.append(new_socket)
+    try:
+        while game_over:
+            rlist, wlist, xlist = select.select([server_socket]+open_client_sockets, [], [])
+            for current_socket in rlist:
+                if current_socket is server_socket:
+                    (new_socket,address) = server_socket.accept()
+                    print('socket created '+ str(address))
+                    open_client_sockets.append(new_socket)
 
-            else:
-
-                if open_client_sockets[0] == current_socket:
-                    cur_socket = 0
-                    mate_socket = 1
                 else:
-                    cur_socket = 1
-                    mate_socket = 0
 
-                place = open_client_sockets[cur_socket].recv(4).decode()
-
-                if len(open_client_sockets) == 1:
-
-                    if place == 'Exit':
-                        open_client_sockets[cur_socket].close()
-                        server_socket.close()
-                        game_over = False
-
-                if len(open_client_sockets) == 2:
-
-                    if place == 'Exit':
-                        open_client_sockets[mate_socket].send("Exit".encode())
-                        open_client_sockets[mate_socket].send("Exit".encode())
-                        time.sleep(0.2)
-                        open_client_sockets[cur_socket].close()
-                        open_client_sockets[mate_socket].close()
-                        server_socket.close()
-                        game_over = False
+                    if open_client_sockets[0] == current_socket:
+                        cur_socket = 0
+                        mate_socket = 1
                     else:
-                        row = int(place[0])
-                        column = int(place[1])
-                        print('Receive Msg from: '+str(cur_socket) +' row: ' + str(row)+' column: '+str(column))
+                        cur_socket = 1
+                        mate_socket = 0
 
-                        (finish, message) = board_game.main_call_func(row, column)
-                        open_client_sockets[cur_socket].send(message.encode())
-                        print('sending Msg: ' + message + 'to' + str(cur_socket))
+                    place = open_client_sockets[cur_socket].recv(4).decode()
 
-                        if message == 'It worked!':
-                            open_client_sockets[mate_socket].send((str(row)+str(column)).encode())
-                            open_client_sockets[mate_socket].send('the info was send!'.encode())
-                            print('sending other player to ' + str(mate_socket) +' row: ' + str(row) + ' column: ' + str(column))
+                    if len(open_client_sockets) == 1:
 
-                        if message == 'Player x is the winner!' or message == 'Player o is the winner!' or message == 'There is no winner!':
-                            open_client_sockets[mate_socket].send((str(row) + str(column)).encode())
-                            open_client_sockets[mate_socket].send(message.encode())
-                            print('sending other player to ' + str(mate_socket) + ' row: ' + str(row) + ' column: ' + str(column))
-                            time.sleep(1)
+                        if place == 'Exit':
+                            open_client_sockets[cur_socket].close()
+                            server_socket.close()
+                            game_over = False
+
+                    if len(open_client_sockets) == 2:
+
+                        if place == 'Exit':
+                            open_client_sockets[mate_socket].send("Exit".encode())
+                            open_client_sockets[mate_socket].send("Exit".encode())
+                            time.sleep(0.2)
                             open_client_sockets[cur_socket].close()
                             open_client_sockets[mate_socket].close()
                             server_socket.close()
-                            game_over= False
+                            game_over = False
+                        else:
+                            row = int(place[0])
+                            column = int(place[1])
+                            print('Receive Msg from: '+str(cur_socket) +' row: ' + str(row)+' column: '+str(column))
 
+                            (finish, message) = board_game.main_call_func(row, column)
+                            open_client_sockets[cur_socket].send(message.encode())
+                            print('sending Msg: ' + message + 'to' + str(cur_socket))
 
+                            if message == 'It worked!':
+                                open_client_sockets[mate_socket].send((str(row)+str(column)).encode())
+                                open_client_sockets[mate_socket].send('the info was send!'.encode())
+                                print('sending other player to ' + str(mate_socket) +' row: ' + str(row) + ' column: ' + str(column))
+
+                            if message == 'Player x is the winner!' or message == 'Player o is the winner!' or message == 'There is no winner!':
+                                open_client_sockets[mate_socket].send((str(row) + str(column)).encode())
+                                open_client_sockets[mate_socket].send(message.encode())
+                                print('sending other player to ' + str(mate_socket) + ' row: ' + str(row) + ' column: ' + str(column))
+                                time.sleep(1)
+                                open_client_sockets[cur_socket].close()
+                                open_client_sockets[mate_socket].close()
+                                server_socket.close()
+                                game_over= False
+    except:
+        socket_has_been_closed(current_socket, rlist, open_client_sockets)
 if __name__ == '__main__':
     main()
