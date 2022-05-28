@@ -312,6 +312,14 @@ def is_playing_game(USERNAME):
     conn.close()
     return True
 
+def get_raddr_from_socket(socket):
+    socket_list = list(socket.split("raddr=("))
+    raddr_list = list(socket_list[1].split(","))
+    raddr = str(raddr_list[0])
+    return raddr
+
+
+
 def change_status_eix_eigul_game(list_client, current_socket, mate_server_socket):
     global PORT_EIX_EIGUL
     global PORT_EIX_EIGUL_MAX_RANGE
@@ -325,7 +333,6 @@ def change_status_eix_eigul_game(list_client, current_socket, mate_server_socket
         if is_playing_game(USERNAME) == False:
             conn = sqlite3.connect(SQL_DATABASE_NAME)
             cursor = conn.cursor()
-            #cursor.execute("SELECT * FROM `member` WHERE `statusEixEigulGame` = ?", (str("waiting"), ))
             cursor.execute("SELECT * FROM `member` WHERE `serverId` = ? and `statusEixEigulGame` = ?", (int (SERVER_ID), str("waiting")))
 
             if cursor.fetchone() is not None:
@@ -333,6 +340,13 @@ def change_status_eix_eigul_game(list_client, current_socket, mate_server_socket
                 username_of_other_player = cursor.fetchone()[0]
                 cursor.execute("SELECT portEixEigul FROM `member` WHERE `userName` = ?", (str(username_of_other_player),))
                 port_eix_eigul = cursor.fetchone()[0]
+
+                #cursor.execute("SELECT socket FROM `member` WHERE `userName` = ?", (str(username_of_other_player),))
+                #client_socket = cursor.fetchone()[0]
+                #raddr = ""
+                #raddr = get_raddr_from_socket(client_socket)
+                #print("remote ip = " + str(raddr))
+
                 cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ? WHERE `userName` = ?", (str("playing"), str(username_of_other_player)))
                 cursor.execute("UPDATE `member` SET `statusEixEigulGame` = ?, `portEixEigul` = ? WHERE `userName` = ?", (str("playing"), port_eix_eigul, str(USERNAME)))
                 conn.commit()
@@ -590,7 +604,7 @@ def Register(list_client, current_socket, mate_server_socket):
         print("send to mate server ServerUpdate")
         message_server_register = pickle.dumps(["ServerUpdate", SERVER_ID, USERNAME, PASSWORD, FIRSTNAME, LASTNAME, "not playing", 0 , 0, "not playing", 0, "not playing", 0, "not playing", 0, "not connected", 0])
 
-        if mate_server_socket:
+        if mate_server_socket and not mate_server_socket.fileno() == -1:
             mate_server_socket.send(message_server_register)
 
         return True
@@ -611,10 +625,10 @@ def UnRegister(list_client, current_socket, mate_server_socket):
         if USERNAME == "" or PASSWORD == "":
             message_unregister = pickle.dumps(["Please complete the required field!", "orange"])
         else:
-            cursor.execute("SELECT * FROM `member` WHERE `userName` = ?", (USERNAME,))
+            cursor.execute("SELECT * FROM `member` WHERE `userName` = ? and `statusPlayerInGame` = ?", (USERNAME,"not connected"))
             if cursor.fetchone() is None:
                 print("Username is dosn't exist " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
-                message_unregister = pickle.dumps(["Username is dosn't exist", "red"])
+                message_unregister = pickle.dumps(["Username is dosn't exist or already connected", "red"])
             else:
                 print("Username delete " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
                 cursor.execute("DELETE FROM `member` WHERE `userName` = ?", str(USERNAME))
@@ -628,7 +642,7 @@ def UnRegister(list_client, current_socket, mate_server_socket):
         print("send to client UnRegister reply")
         current_socket.send(message_unregister)
 
-        if mate_server_socket:
+        if mate_server_socket and not mate_server_socket.fileno() == -1:
             print("send to mate server ServerDeleteUpdate")
             message_server_unregister = pickle.dumps(["ServerDeleteUpdate", USERNAME, PASSWORD])
             mate_server_socket.send(message_server_unregister)
@@ -775,8 +789,8 @@ def send_row_to_mate_server(mate_server_socket: object, row):
     scoreOfColorGame = row[14]
     statusPlayerInGame = row[15]
 
-    print("send to mate: server_id="+ str(server_id) +" user_name"+user_name + " statusEixEigulGame="+statusEixEigulGame + " portEixEigul"+ str(portEixEigul))
-    if mate_server_socket:
+    if mate_server_socket and not mate_server_socket.fileno() == -1:
+        print("send to mate: server_id="+ str(server_id) +" user_name"+user_name + " statusEixEigulGame="+statusEixEigulGame + " portEixEigul"+ str(portEixEigul))
         data_update = pickle.dumps(["ServerUpdate", server_id, user_name, password, first_name, last_name, statusEixEigulGame, portEixEigul,numberOfWinsEixEigul, statusBrikeBreakerGame, numberOfWinsBrikeBreakerGame, statusSnakeGame, scoreOfSnakeGame,statusColorGame,scoreOfColorGame, statusPlayerInGame])
         #print("send to mate:" + str(data_update))
         mate_server_socket.send(data_update)
@@ -784,7 +798,7 @@ def send_row_to_mate_server(mate_server_socket: object, row):
 
 def get_and_send_row_to_mate_server(mate_server_socket, user_name):
 
-    if not mate_server_socket:
+    if not mate_server_socket or mate_server_socket.fileno() == -1:
         return
 
     conn = sqlite3.connect(SQL_DATABASE_NAME)
@@ -842,6 +856,7 @@ def thread_mate_server_function(mate_server_socket):
             is_register = server_update(list_client)
             is_delete_update = server_delete_update(list_client)
         except:
+            server_socket_has_been_closed(mate_server_socket)
             print("thread_mate_server_function except")
             return
 
@@ -865,6 +880,31 @@ def thread_server(mate_server_socket):
     x.start()
 
 
+def client_socket_has_been_closed(current_socket, data_clients, mate_server_socket, socket_id_and_user_name):
+    list_client = ["Exit", "user_name", "password"]
+    user_name = ""
+    for i in range(len(socket_id_and_user_name)):
+        print("socket_has_been_closed")
+        if current_socket == socket_id_and_user_name[i][1]:
+            user_name = socket_id_and_user_name[i][0]
+            list_client[0] = "Exit"
+            list_client[1] = socket_id_and_user_name[i][0]
+            Exit(list_client, current_socket, mate_server_socket)
+            socket_id_and_user_name.remove(socket_id_and_user_name[i])
+            break;
+
+    for i in range(len(data_clients)):
+        print("socket_has_been_closed")
+        if user_name == data_clients[i][2]:
+            data_clients.remove(data_clients[i])
+            break
+
+def server_socket_has_been_closed(mate_server_socket):
+    if mate_server_socket and not mate_server_socket.fileno() == -1:
+        mate_server_socket.close()
+
+    clear_mate_palayer_status_in_databased()
+
 def socket_has_been_closed(current_socket, rlist, data_clients, mate_server_socket, open_client_sockets,
                            socket_id_and_user_name):
     list_client = ["Exit", "user_name", "password"]
@@ -874,21 +914,14 @@ def socket_has_been_closed(current_socket, rlist, data_clients, mate_server_sock
             bytes_client = current_socket.recv(1024)
             print("select.select current_socket=" + current_socket, list_client)
         except:
-            open_client_sockets.remove(current_socket)
-
-            for i in range(len(socket_id_and_user_name)):
-                print("socket_has_been_closed")
-                #if current_socket == socket_id_and_user_name[i][1]:
-                #    user_name = socket_id_and_user_name[i][0]
-                #    list_client[0] = "Exit"
-                #    list_client[1] = socket_id_and_user_name[i][0]
-                #    Exit(list_client, current_socket, mate_server_socket)
-                #    socket_id_and_user_name.remove(socket_id_and_user_name[i])
-
-            for i in range(len(data_clients)):
-                print("socket_has_been_closed")
-                if user_name == data_clients[i][2]:
-                    data_clients.remove(data_clients[i])
+            try:
+                open_client_sockets.remove(current_socket)
+                if current_socket == mate_server_socket:
+                    server_socket_has_been_closed(mate_server_socket)
+                else:
+                    client_socket_has_been_closed(current_socket, data_clients, mate_server_socket, socket_id_and_user_name)
+            except:
+                print("socket_has_been_closed user not exist")
 
 
 def main():
@@ -933,7 +966,7 @@ def main():
         PORT_EIX_EIGUL = PORT_EIX_EIGUL_START_PORT_SERVER_2
         message_server_connect = pickle.dumps(["ServerConnect"])
         thread_mate_server(mate_server_socket)
-        if mate_server_socket:
+        if mate_server_socket and not mate_server_socket.fileno() == -1:
             mate_server_socket.send(message_server_connect)
         print("connected to mate server")
         # sync_db_to_mate_server(mate_server_socket) only the connected send the data !!
@@ -1016,7 +1049,8 @@ def main():
                             send_all_clients(open_client_sockets, data_clients)
 
                     except:
-                        open_client_sockets.remove(current_socket)
+                        socket_has_been_closed(current_socket, rlist, data_clients, mate_server_socket, open_client_sockets,
+                                               socket_id_and_user_name)
                         print("the client close the game!")
         except:
             socket_has_been_closed(current_socket, rlist, data_clients, mate_server_socket, open_client_sockets,
