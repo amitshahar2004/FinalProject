@@ -612,6 +612,8 @@ class TreatMessages:
             self.my_socket.send(message)
 
         except:
+            my_socket.close()
+            sys.exit()
             print("the client close the game!")
 
     def delete_message(self, name_player):
