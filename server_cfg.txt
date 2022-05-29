@@ -1,6 +1,6 @@
-Newton
+Server
 127.0.0.1
 8822
-Nepton
+Server
 127.0.0.1
 8823

@@ -70,7 +70,6 @@ def snake_main_loop():
                     if event.key == pygame.K_q:
                         game_over = True
                         game_close = False
-                        #print("score: 10")
                         print("score: " + str(Length_of_snake - 1))
                     if event.key == pygame.K_c:
                         snake_main_loop()
@@ -78,7 +77,6 @@ def snake_main_loop():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
-                print("score: 10")
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     x1_change = -block_size
