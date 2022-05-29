@@ -112,12 +112,10 @@ class TreatUser:
 
         lbl_register = Label(LoginFrame, text="Register", fg="Blue", font=('arial', 12))
         lbl_register.grid(row=0, sticky=W)
-        lbl_register.bind('<Button-1>', self.ToggleToRegister)
         lbl_register['state'] = 'disabled'
 
         lbl_unregister = Label(LoginFrame, text="UnRegister", fg="Blue", font=('arial', 12))
         lbl_unregister.grid(row=1, sticky=W)
-        lbl_unregister.bind('<Button-1>', self.ToggleToUnRegister)
         lbl_unregister['state'] = 'disabled'
 
     def enable_login_frame(self):
@@ -125,7 +123,9 @@ class TreatUser:
         password['state'] = 'normal'
         btn_login['state'] = 'normal'
         lbl_register['state'] = 'normal'
+        lbl_register.bind('<Button-1>', self.ToggleToRegister)
         lbl_unregister['state'] = 'normal'
+        lbl_unregister.bind('<Button-1>', self.ToggleToUnRegister)
         liste['state'] = 'disable'
 
     def disable_register_frame(self):
@@ -169,6 +169,7 @@ class TreatUser:
         lbl_login = Label(RegisterFrame, text="Login", fg="Blue", font=('arial', 12))
         lbl_login.grid(row=0, sticky=W)
         lbl_login.bind('<Button-1>', self.RegisterToggleToLogin)
+
 
     def UnRegisterForm(self):
         global UnRegisterFrame, unreg_lbl_result,unreg_username,unreg_password,btn_unregister
@@ -221,7 +222,7 @@ class TreatUser:
         hexdigest_password_result = ""
 
         if not self.USERNAME.get() or not self.PASSWORD.get() or not self.FIRSTNAME.get() or not self.LASTNAME.get():
-            text = "one of the field is empty"
+            text = "one of the fields is empty"
             lbl_result2.config(text=text)
             print("user and password can't be empty")
             return
@@ -258,8 +259,8 @@ class TreatUser:
     def UnRegister(self):
         hexdigest_password_result = ""
 
-        if not self.USERNAME.get() or not self.PASSWORD.get() :
-            text = "one of the field is empty"
+        if not self.USERNAME.get() or not self.PASSWORD.get():
+            text = "one of the fields is empty"
             lbl_result2.config(text=text)
             print("user and password can't be empty")
             return
@@ -301,10 +302,10 @@ class TreatUser:
             for select_server in liste.curselection():
                 print("select_server=" + str(select_server))
                 if select_server == 0:
-                    server_is_selected = True;
+                    server_is_selected = True
                     self.server1()
                 else:
-                    server_is_selected = True;
+                    server_is_selected = True
                     self.server2()
         except:
             text = "unable to connect server (choose different server)"

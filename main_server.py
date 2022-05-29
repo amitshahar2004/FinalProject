@@ -12,8 +12,8 @@ import sqlite3
 import threading
 import  pyautogui
 
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
+WINDOW_WIDTH = 1366
+WINDOW_HEIGHT = 768
 STARTING_BEAR_POINT_X = 1000
 STARTING_BEAR_POINT_Y = 300
 BOX_POINT_X = 200
@@ -625,10 +625,10 @@ def UnRegister(list_client, current_socket, mate_server_socket):
         if USERNAME == "" or PASSWORD == "":
             message_unregister = pickle.dumps(["Please complete the required field!", "orange"])
         else:
-            cursor.execute("SELECT * FROM `member` WHERE `userName` = ? and `statusPlayerInGame` = ?", (USERNAME,"not connected"))
+            cursor.execute("SELECT * FROM `member` WHERE `userName` = ? and `statusPlayerInGame` = ?", (USERNAME, "not connected"))
             if cursor.fetchone() is None:
                 print("Username is dosn't exist " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
-                message_unregister = pickle.dumps(["Username is dosn't exist or already connected", "red"])
+                message_unregister = pickle.dumps(["Username dosn't exist or already connected", "red"])
             else:
                 print("Username delete " + command + " USERNAME=" + USERNAME + " PASSWORD=" + PASSWORD)
                 cursor.execute("DELETE FROM `member` WHERE `userName` = ?", str(USERNAME))
@@ -891,7 +891,7 @@ def client_socket_has_been_closed(current_socket, data_clients, mate_server_sock
             list_client[1] = socket_id_and_user_name[i][0]
             Exit(list_client, current_socket, mate_server_socket)
             socket_id_and_user_name.remove(socket_id_and_user_name[i])
-            break;
+            break
 
     for i in range(len(data_clients)):
         print("socket_has_been_closed")
@@ -954,7 +954,7 @@ def main():
         "server begin my_ip=" + mate_server_ip + "/" + str(my_port) + ", mate_server_ip=" + mate_server_ip + "/" + str(
             mate_server_port) + "SQL_DATABASE_NAME=" + SQL_DATABASE_NAME)
     server_socket = socket.socket()
-    mate_server_socket = 0;
+    mate_server_socket = 0
     init_database()
 
     try:
@@ -971,7 +971,7 @@ def main():
         print("connected to mate server")
         # sync_db_to_mate_server(mate_server_socket) only the connected send the data !!
     except socket.error:
-        mate_server_socket = 0;
+        mate_server_socket = 0
         clear_palayer_status_in_databased()
         print("no mate server cleat all user status")
 
@@ -1041,7 +1041,7 @@ def main():
                                     found = True
 
                             if found == False:
-                                socket_id_and_user_name.append([list_client[3], current_socket]);
+                                socket_id_and_user_name.append([list_client[3], current_socket])
                                 data_clients.append([list_client[1], list_client[2], list_client[3], list_client[4], list_client[5]])
                                 change_status_to_connected(mate_server_socket, list_client[3])
 

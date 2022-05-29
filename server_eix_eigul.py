@@ -29,11 +29,11 @@ class EixEigul:
 
           winner= self.check_winner(shape_player)
           if winner == 'Player x is the winner!' or winner == 'Player o is the winner!' or winner == 'There is no winner!':
-              return True,winner
+              return True, winner
           else:
-              return False,"It worked!"
+              return False, "It worked!"
       else:
-          return False,"It has caught, try another place!"
+          return False, "It has caught, try another place!"
 
 
 
