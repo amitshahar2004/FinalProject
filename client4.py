@@ -489,7 +489,7 @@ class Player:
                     break
                 data_in_game = pid_game_that_not_eix_eigul.stdout.readline().decode()
                 print(data_in_game)
-                if 'Sorry Game Over Try Again!' in data_in_game:
+                if 'you are the winner!' in data_in_game:
                     won_in_brike_breaker_game = True
                 if 'score' in data_in_game:
                     data_in_game = data_in_game.split(" ")
@@ -689,6 +689,16 @@ def main():
                     time.sleep(0.2)
                     my_socket.close()
                     sys.exit()
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        finish1 = True
+                        message = pickle.dumps(["Exit", player.get_name_player()])
+                        my_socket.send(message)
+                        time.sleep(0.2)
+                        my_socket.close()
+                        sys.exit()
+
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     pos = pygame.mouse.get_pos()
