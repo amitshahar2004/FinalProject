@@ -247,7 +247,7 @@ class Zira:
 
     def set_player(self, data_clients):
 
-        print(data_clients)
+        #print(data_clients)
 
         for player in data_clients:
 
@@ -414,7 +414,7 @@ class Player:
         for i in range(20):
             first_place_x = first_place_x - jump_in_x
             first_place_y = first_place_y - jump_in_y
-            print("x= " + str(first_place_x) + " y= " + str(first_place_y))
+            #print("x= " + str(first_place_x) + " y= " + str(first_place_y))
             self.treat_messages.send_message(first_place_x, first_place_y, self.name_player, '')
             time.sleep(0.1)
 
@@ -461,10 +461,11 @@ class Player:
 
             if game == "eix eigul":
                 port_to_game = data_client[1]
+                ipAddr = data_client[2]
                 if which_player_file == "player_x.py":
-                    pid_server = subprocess.Popen([sys.executable, "server_eix_eigul.py", str(port_to_game)])
+                    pid_server = subprocess.Popen(["server_eix_eigul.exe", str(port_to_game)])
 
-                x = threading.Thread(target=self.thread_eix_eigul, args=(which_player_file, my_socket, port_to_game))
+                x = threading.Thread(target=self.thread_eix_eigul, args=(which_player_file, my_socket, port_to_game, str(ipAddr)))
                 x.start()
 
             else:
@@ -472,13 +473,22 @@ class Player:
                 x.start()
 
         except:
-            print("the client close the game!")
+            print("play game : the client close the game!")
 
 
     def thread_game_that_not_eix_eigul(self, which_player_file, my_socket, game):
 
+        if which_player_file == "brike_breaker_game.py" :
+            player_file = "brike_breaker_game.exe"
+
+        if which_player_file == "color_game.py" :
+            player_file = "color_game.exe"
+
+        if which_player_file == "snake_game.py" :
+            player_file = "snake_game.exe"
+
         try:
-            pid_game_that_not_eix_eigul = subprocess.Popen([sys.executable, which_player_file], stdout=subprocess.PIPE)
+            pid_game_that_not_eix_eigul = subprocess.Popen([player_file], stdout=subprocess.PIPE)
 
             data_in_game = ''
             won_in_brike_breaker_game = False
@@ -518,14 +528,19 @@ class Player:
             my_socket.send(message)
 
         except:
-            print("the client close the game!")
+            print("not eix eigul : the client close the game!")
 
 
 
-    def thread_eix_eigul(self, which_player_file, my_socket, port_eix_eigul):
+    def thread_eix_eigul(self, which_player_file, my_socket, port_eix_eigul, ipAddr):
 
         try:
-            pid_client = subprocess.Popen([sys.executable, which_player_file, str(port_eix_eigul)], stdout=subprocess.PIPE)
+            if which_player_file == "player_x.py":
+                pid_client = subprocess.Popen(["player_x.exe", str(port_eix_eigul), str(ipAddr)], stdout=subprocess.PIPE)
+
+
+            if which_player_file == "player_o.py":
+                pid_client = subprocess.Popen(["player_o.exe", str(port_eix_eigul), str(ipAddr)], stdout=subprocess.PIPE)
 
             data_in_eix_eigul = ''
             is_player_x_winner = False
@@ -555,7 +570,7 @@ class Player:
             my_socket.send(message)
 
         except:
-            print("the client close the game!")
+            print("eix eigul : the client close the game!")
 
 
 class TreatMessages:
@@ -586,8 +601,9 @@ class TreatMessages:
             try:
                 self.data_clients = self.my_socket.recv(1024)
                 self.data_clients = pickle.loads(self.data_clients)
-                print(self.data_clients)
+                #print(self.data_clients)
                 if self.data_clients[0] == "you are waiting or playing" or self.data_clients[0] == "player_x.py" or self.data_clients[0] == "player_o.py" or self.data_clients[0] == "brike_breaker_game.py" or self.data_clients[0] == "color_game.py" or self.data_clients[0] == "snake_game.py":
+                    print(self.data_clients)
                     time.sleep(0.2)
                 else:
                     if self.data_clients[0] == "control board":
@@ -598,7 +614,7 @@ class TreatMessages:
                         self.zira.set_zira(self.data_clients)
 
             except:
-                print("the client close the game!")
+                print("draw bord : the client close the game!")
                 return
 
     def send_message(self, first_place_x, first_place_y, name_player, last_message):
@@ -614,7 +630,7 @@ class TreatMessages:
         except:
             my_socket.close()
             sys.exit()
-            print("the client close the game!")
+            print("send msg : the client close the game!")
 
     def delete_message(self, name_player):
 
@@ -679,6 +695,7 @@ def main():
     x.start()
 
     finish1 = False
+    mouse = 50
     try:
         while not finish1:
             for event in pygame.event.get():
@@ -700,11 +717,14 @@ def main():
                         sys.exit()
 
 
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN and mouse <= 0:
+                    mouse = 200
                     pos = pygame.mouse.get_pos()
                     pos_x = pos[0]
                     pos_y = pos[1]
-                    print("pos_x= " + str(pos_x) + " pos_y= " + str(pos_y))
+                    #print("pos_x= " + str(pos_x) + " pos_y= " + str(pos_y))
+
+
 
                     is_user_want_send_everyone_message = user_want_send_everyone_message(pos_x, pos_y, player, treat_messages)
                     if is_user_want_send_everyone_message == False:
@@ -731,6 +751,7 @@ def main():
                                                                 is_user_want_to_go_to_forest_from_beach_background = user_want_to_go_to_forest_from_beach_background(pos_x, pos_y, WINDOW_WIDTH, WINDOW_HEIGHT, player, zira,treat_messages, my_socket)
                                                                 if is_user_want_to_go_to_forest_from_beach_background == False:
                                                                     player.move_player(pos_x - 100, pos_y - 100)
+            mouse = mouse - 1
     except:
         finish1 = True
         message = pickle.dumps(["Exit", player.get_name_player()])

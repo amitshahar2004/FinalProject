@@ -6,18 +6,11 @@ import pickle
 import time
 import tkinter as tk
 import hashlib
+import socket
 
 server_is_selected = False
 server_is_connected = False
 
-# width = 640
-# height = 480
-# screen_width = root.winfo_screenwidth()
-# screen_height = root.winfo_screenheight()
-# x = (screen_width/2) - (width/2)
-# y = (screen_height/2) - (height/2)
-# root.geometry("%dx%d+%d+%d" % (width, height, x, y))
-# root.resizable(0, 0)
 
 class TreatUser:
 
@@ -59,12 +52,6 @@ class TreatUser:
         self.root.mainloop()
 
 
-    # def Database(self):
-    #     self.conn = sqlite3.connect("db_member.db")
-    #     self.cursor = self.conn.cursor()
-    #     self.cursor.execute("CREATE TABLE IF NOT EXISTS `member` (mem_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT, password TEXT, firstname TEXT, lastname TEXT)")
-
-
     def Exit(self):
         result = tkMessageBox.askquestion('System', 'Are you sure you want to exit?', icon="warning")
         if result == 'yes':
@@ -98,7 +85,6 @@ class TreatUser:
 
         lbl_server = Label(LoginFrame, text="Choose Server to Connect", fg="Black", font=('arial', 12))
         lbl_server.grid(row=2, sticky=W)
-        #scrollbar = Scrollbar(LoginFrame, orient = tk.HORIZONTAL, width=4, command=self.server2)
         liste = Listbox(LoginFrame, font=('arial', 12), width=20,height=3)
         liste.grid(row=2, column=1, sticky='ns')
 
@@ -331,6 +317,10 @@ class TreatUser:
         global server_is_connected
         hexdigest_password_result = ""
 
+        hostname = socket.gethostname()
+        IPAddr = socket.gethostbyname(hostname)
+        print("Your Computer IP Address is:" + IPAddr)
+
         if not self.USERNAME.get() or not self.PASSWORD.get():
             text = "user and password can't be empty"
             lbl_result1.config(text=text)
@@ -348,7 +338,7 @@ class TreatUser:
         result = hashlib.md5(encoded)
         hexdigest_password_result = result.hexdigest()
 
-        data_login = pickle.dumps(["Login", self.USERNAME.get(), hexdigest_password_result])
+        data_login = pickle.dumps(["Login", self.USERNAME.get(), hexdigest_password_result, str(IPAddr)])
         self.my_socket.send(data_login)
 
         bytes_message_login = self.my_socket.recv(1024)
@@ -422,68 +412,3 @@ class TreatUser:
 
     def get_server_port(self):
         return self.SERVER_PORT.get()
-
-    # def Register(self):
-    #     self.Database()
-    #     if self.USERNAME.get == "" or self.PASSWORD.get() == "" or self.FIRSTNAME.get() == "" or self.LASTNAME.get == "":
-    #         lbl_result2.config(text="Please complete the required field!", fg="orange")
-    #     else:
-    #         self.cursor.execute("SELECT * FROM `member` WHERE `username` = ?", (self.USERNAME.get(),))
-    #         if self.cursor.fetchone() is not None:
-    #             lbl_result2.config(text="Username is already taken", fg="red")
-    #         else:
-    #             self.cursor.execute("INSERT INTO `member` (username, password, firstname, lastname) VALUES(?, ?, ?, ?)",(str(self.USERNAME.get()), str(self.PASSWORD.get()), str(self.FIRSTNAME.get()), str(self.LASTNAME.get())))
-    #             self.conn.commit()
-    #             self.USERNAME.set("")
-    #             self.PASSWORD.set("")
-    #             self.FIRSTNAME.set("")
-    #             self.LASTNAME.set("")
-    #             lbl_result2.config(text="Successfully Created!", fg="black")
-    #         self.cursor.close()
-    #         self.conn.close()
-
-
-    # def Login(self):
-    #     self.Database()
-    #     if self.USERNAME.get == "" or self.PASSWORD.get() == "":
-    #         lbl_result1.config(text="Please complete the required field!", fg="orange")
-    #     else:
-    #         self.cursor.execute("SELECT * FROM `member` WHERE `username` = ? and `password` = ?",(self.USERNAME.get(), self.PASSWORD.get()))
-    #         if self.cursor.fetchone() is not None:
-    #             lbl_result1.config(text="You Successfully Login", fg="blue")
-    #         else:
-    #             lbl_result1.config(text="Invalid Username or password", fg="red")
-
-
-def main():
-    """
-    Add Documentation here
-    """
-    pass  # Replace Pass with Your Code
-
-    root = Tk()
-    root.title("Connect user")
-
-    read_file_data()
-
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    print(screen_width)
-    print(screen_height)
-    root.geometry("%dx%d" % (screen_width, screen_height))
-    root.resizable(0, 0)
-
-    LoginForm()
-
-    menubar = Menu(root)
-    filemenu = Menu(menubar, tearoff=0)
-    filemenu.add_command(label="Exit", command=Exit)
-    menubar.add_cascade(label="File", menu=filemenu)
-    root.config(menu=menubar)
-
-    root.mainloop()
-
-
-if __name__ == '__main__':
-    main()
-

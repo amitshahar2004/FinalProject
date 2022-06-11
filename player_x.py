@@ -141,7 +141,11 @@ def main():
     pass  # Replace Pass with Your Code
     print("client begin")
     my_socket = socket.socket()
-    ip = "127.0.0.1"
+    hostname = socket.gethostname()
+    IPAddr = socket.gethostbyname(hostname)
+    print("Your Computer IP Address is:" + IPAddr)
+
+    ip = str(IPAddr)
     port = int(sys.argv[1])
     my_socket.connect((ip, port))
 
