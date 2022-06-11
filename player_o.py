@@ -140,13 +140,14 @@ def wrote_winner(screen, data):
 def main():
     print("Arguments argv[0]: " + sys.argv[0])
     print("Arguments argv[1]: " + sys.argv[1])
+    print("Arguments argv[2]: " + sys.argv[2])
     """
     Add Documentation here
     """
     pass  # Replace Pass with Your Code
     print("client begin")
     my_socket = socket.socket()
-    ip = "127.0.0.1"
+    ip = str(sys.argv[2])
     port = int(sys.argv[1])
     my_socket.connect((ip, port))
 
