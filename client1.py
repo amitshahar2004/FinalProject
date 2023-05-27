@@ -10,7 +10,7 @@ import pickle
 import threading
 import connect_user
 
-
+amittt
 
 
 def user_want_send_everyone_message(pos_x, pos_y, player, treat_messages):
